@@ -1,2 +1,2 @@
 class GlobalConstants(object):
-    is_debug = True
+    is_debug = False
