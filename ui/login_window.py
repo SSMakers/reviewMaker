@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt
 from GlobalConstants import GlobalConstants
 from internal_api.internal_api import verify_uuid_with_server
 from ui.manual_login_dialog import UUIDInputDialog
+from utils.computer_resource import get_system_uuid
 from utils.validator import validate_uuid_format
 
 
@@ -125,7 +126,7 @@ class LoginPage(QWidget):
     def check_initial_uuid(self):
         # UUID 추출 로직 호출 (예: get_system_uuid())
         # 지금은 로직 흐름 확인을 위해 None으로 가정
-        self.uuid = None
+        self.uuid = get_system_uuid()
 
         if self.uuid:
             self.set_auth_status(True, f"자동 인증 성공 (ID: {self.uuid[:8]}...)")
