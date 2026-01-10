@@ -1,15 +1,19 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QMessageBox, QHBoxLayout, QFrame
 from PyQt6.QtCore import Qt
+
+import version
 from GlobalConstants import GlobalConstants
 from internal_api.internal_api import verify_uuid_with_server
 from ui.manual_login_dialog import UUIDInputDialog
 from utils.computer_resource import get_system_uuid
 from utils.validator import validate_uuid_format
+from logger.file_logger import logger
 
 
 class LoginPage(QWidget):
     def __init__(self, on_login_success):
         super().__init__()
+        logger.info(f"Version : {version.Version.MAJOR}.{version.Version.MINOR}.{version.Version.PATCH}")
         self.btn_manual = None
         self.btn_login = None
         self.lbl_info = None
@@ -130,8 +134,10 @@ class LoginPage(QWidget):
 
         if self.uuid:
             self.set_auth_status(True, f"자동 인증 성공 (ID: {self.uuid[:8]}...)")
+            logger.info(f"자동 인증 성공 (ID: {self.uuid})")
         else:
             self.set_auth_status(False, "UUID를 찾을 수 없습니다. 수동 인증이 필요합니다.")
+            logger.warning(f"UUID를 찾을 수 없습니다. 수동 인증이 필요합니다.")
 
     def open_manual_input(self):
         dialog = UUIDInputDialog(self)
