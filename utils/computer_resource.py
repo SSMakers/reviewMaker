@@ -1,6 +1,8 @@
 import subprocess
 import platform
 
+from logger.file_logger import logger
+
 
 def get_system_uuid():
     """시스템의 고유 UUID를 가져옵니다."""
@@ -19,5 +21,5 @@ def get_system_uuid():
             uuid = None
         return uuid
     except Exception as e:
-        print(f"UUID 추출 실패: {e}")
+        logger.error(f"UUID 추출 실패: {e}")
         return None

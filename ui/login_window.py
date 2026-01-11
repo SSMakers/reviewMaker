@@ -159,5 +159,5 @@ class LoginPage(QWidget):
                 QMessageBox.warning(self, "경고", "UUID를 입력해야 합니다.")
 
     def __handle_login(self):
-        print(f"[LOG] {self.uuid} 인증 완료. 메인 화면으로 진입합니다.")
+        logger.info(f"{self.uuid} 인증 완료. 메인 화면으로 진입합니다.")
         self.on_login_success()

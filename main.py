@@ -1,7 +1,11 @@
 import sys
+
 from PyQt6.QtWidgets import QApplication, QStackedWidget, QMainWindow
+
+from logger.file_logger import logger
 from ui.login_window import LoginPage
-from ui.main_window import MainPage # 아직 만들지 않았다면 아래 3번 참고
+from ui.main_window import MainPage  # 아직 만들지 않았다면 아래 3번 참고
+
 
 class AppController(QMainWindow):
     def __init__(self):
@@ -19,7 +23,7 @@ class AppController(QMainWindow):
         self.main_page = MainPage()
 
         # 3. 스택에 페이지 추가
-        self.stacked_widget.addWidget(self.login_page) # index 0
+        self.stacked_widget.addWidget(self.login_page)  # index 0
         self.stacked_widget.addWidget(self.main_page)  # index 1
 
         # 4. 첫 화면 설정
@@ -27,7 +31,7 @@ class AppController(QMainWindow):
 
     def go_to_main(self):
         """로그인 성공 시 호출되어 메인 화면으로 전환함"""
-        print("[LOG] 메인 화면으로 전환합니다.")
+        logger.info("[LOG] 메인 화면으로 전환합니다.")
         self.stacked_widget.setCurrentIndex(1)
 
 

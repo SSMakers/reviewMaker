@@ -1,15 +1,26 @@
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QPushButton,
-                             QFileDialog, QLabel, QProgressBar, QLineEdit)
-from worker import ApiWorker
+from urllib.parse import urlparse, parse_qs
 
+from PyQt6.QtWidgets import (QProgressBar)
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSpinBox, QFileDialog, QPlainTextEdit)
-from PyQt6.QtCore import Qt
+
+from external_api.cafe24_api import Cafe24Api
+from logger.file_logger import logger
+from ui.main.mall_id_edit import MallIdEdit
+from ui.main.redirected_url_edit import RedirectedUrlEdit
+from worker import ApiWorker
 
 
 class MainPage(QWidget):
     def __init__(self):
         super().__init__()
+
+        # API
+        self.cafe24_interface = None
+        self.access_token = None
+        self.refresh_token = None
+
+        # UI
         self.btn_submit = None
         self.btn_select_file = None
         self.lbl_file_status = None
@@ -47,7 +58,7 @@ class MainPage(QWidget):
         product_layout.addWidget(self.lbl_product)
         product_layout.addWidget(self.spin_product)
 
-        # (3) 파일선택 버튼
+        # (3) 파일선택 버튼e
         file_layout = QVBoxLayout()
         self.lbl_file_status = QLabel("파일: 미선택")
         self.btn_select_file = QPushButton("엑셀 파일 선택")
@@ -61,6 +72,36 @@ class MainPage(QWidget):
         top_layout.addLayout(product_layout)
         top_layout.addLayout(file_layout)
         main_layout.addLayout(top_layout)
+
+        # --- mall id 레이아웃 ---
+        # mall id
+        token_layout = QHBoxLayout()
+        self.lbl_mall_id = QLabel("mall ID")
+        self.mall_id_edit = MallIdEdit(self, on_enter_func=self.__get_redirect_url)
+        self.mall_id_edit.setFixedHeight(30)
+        self.btn_refresh = QPushButton("새로얻기")
+        self.btn_refresh.setFixedHeight(30)
+        self.btn_refresh.clicked.connect(self.__get_redirect_url)
+
+        token_layout.addWidget(self.lbl_mall_id)
+        token_layout.addWidget(self.mall_id_edit)
+        token_layout.addWidget(self.btn_refresh)
+        main_layout.addLayout(token_layout)
+
+        # --- 토큰 레이아웃 ---
+        # (1) 상품 번호
+        token_layout = QHBoxLayout()
+        self.lbl_token = QLabel("Redirected URL")
+        self.redirected_url = RedirectedUrlEdit(self, on_enter_func=self.__get_api_token)
+        self.redirected_url.setFixedHeight(60)
+        self.btn_save = QPushButton("저장")
+        self.btn_save.setFixedHeight(60)
+        self.btn_save.clicked.connect(self.__get_api_token)
+
+        token_layout.addWidget(self.lbl_token)
+        token_layout.addWidget(self.redirected_url)
+        token_layout.addWidget(self.btn_save)
+        main_layout.addLayout(token_layout)
 
         # --- 중간 레이아웃 (4. 리뷰 등록 버튼) ---
         self.btn_submit = QPushButton("리뷰 등록 시작")
@@ -114,16 +155,65 @@ class MainPage(QWidget):
 
         self.setLayout(main_layout)
 
+    def __get_redirect_url(self):
+        mall_id = self.mall_id_edit.toPlainText().strip()  # 쇼핑몰 ID는 PC의 UUID를 가지고 가져오기
+        if not mall_id:
+            logger.error("❌ 오류: 쇼핑몰 ID를 입력하세요")
+            self.append_log("❌ 오류: 쇼핑몰 ID를 입력하세요")
+            return
+
+        self.cafe24_interface = Cafe24Api(mall_id)
+        self.cafe24_interface.get_authorization_url()
+
+    def __get_api_token(self):
+        redirected_url = self.redirected_url.toPlainText().strip()
+        if not redirected_url:
+            logger.error("❌ 오류: Redirencted Url를 입력하세요")
+            self.append_log("❌ 오류: Redirencted Url를 입력하세요")
+            return
+
+        try:
+            parsed_url = urlparse(redirected_url)
+            params = parse_qs(parsed_url.query)
+            auth_code = params.get('code', [None])[0]
+
+            if not auth_code:
+                logger.warning(f"⚠️ URL에 'code' 파라미터가 포함되어 있지 않습니다.")
+                self.append_log(f"⚠️ URL에 'code' 파라미터가 포함되어 있지 않습니다.")
+                return
+
+            logger.info(f"✅ auth_code 추출 성공")
+            self.append_log(f"✅ auth_code 추출 성공")
+
+            if not self.cafe24_interface:
+                logger.error(f"❌ redirected url을 새로 받아서 입력해주세요")
+                self.append_log(f"❌ redirected url을 새로 받아서 입력해주세요")
+                return
+            is_success_fetch = self.cafe24_interface.fetch_access_token(auth_code)
+
+            if not is_success_fetch:
+                logger.error(f"❌ api token 업데이트 실패")
+                self.append_log(f"❌ api token 업데이트 실패")
+
+        except ValueError as e:
+            logger.warning(f"⚠️ 경고: {e}")
+            self.append_log(f"⚠️ 경고: {e}")
+
+        except Exception as e:
+            logger.error(f"❌ 시스템 오류: {str(e)}")
+            self.append_log(f"❌ 시스템 오류: {str(e)}")
+
     def open_file_dialog(self):
         fname, _ = QFileDialog.getOpenFileName(self, "엑셀 파일 선택", "", "Excel Files (*.xlsx *.xls)")
         if fname:
             self.lbl_file_status.setText(f"파일: {fname.split('/')[-1]}")
             self.file_path = fname
-            print(f"[LOG] 파일 선택됨: {fname}")
+            logger.info(f"파일 : {fname}")
 
     def start_review_process(self):
         # 파일 선택 여부 확인
         if not hasattr(self, 'file_path') or not self.file_path:
+            logger.error("❌ 오류: 엑셀 파일을 먼저 선택해주세요.")
             self.append_log("❌ 오류: 엑셀 파일을 먼저 선택해주세요.")
             return
 
@@ -153,8 +243,10 @@ class MainPage(QWidget):
         self.btn_submit.setEnabled(True)
         self.btn_select_file.setEnabled(True)
         if success:
+            logger.info("✨ 모든 작업이 종료되었습니다.")
             self.append_log("✨ 모든 작업이 종료되었습니다.")
         else:
+            logger.warning("🚫 작업이 중단되었습니다. 로그를 확인하세요.")
             self.append_log("🚫 작업이 중단되었습니다. 로그를 확인하세요.")
 
     def append_log(self, text):
