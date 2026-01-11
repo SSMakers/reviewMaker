@@ -20,3 +20,5 @@ six==1.17.0
 tzdata==2025.3
 urllib3==2.6.2
 python-dotenv==1.2.1
+selenium==4.38.0
+webdriver-manager==4.0.2
