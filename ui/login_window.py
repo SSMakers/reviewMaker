@@ -3,6 +3,9 @@ from PyQt6.QtCore import Qt
 
 import version
 from global_constants import IS_DEBUG
+from external_api.server.models import VerifyDenied
+from external_api.server.server_api import ServerApi
+
 from internal_api.internal_api import verify_uuid_with_server
 from ui.manual_login_dialog import UUIDInputDialog
 from utils.computer_resource import get_system_uuid
@@ -133,8 +136,13 @@ class LoginPage(QWidget):
         self.uuid = get_system_uuid()
 
         if self.uuid:
-            self.set_auth_status(True, f"자동 인증 성공 (ID: {self.uuid[:8]}...)")
-            logger.info(f"자동 인증 성공 (ID: {self.uuid})")
+            result = ServerApi().auth_verify(device_id=self.uuid)
+            if isinstance(result, VerifyDenied):
+                QMessageBox.warning(self, "인증 실패", "등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
+                return
+            else:
+                self.set_auth_status(True, f"자동 인증 성공 (ID: {self.uuid[:8]}...)")
+                logger.info(f"자동 인증 성공 (ID: {self.uuid})")
         else:
             self.set_auth_status(False, "UUID를 찾을 수 없습니다. 수동 인증이 필요합니다.")
             logger.warning(f"UUID를 찾을 수 없습니다. 수동 인증이 필요합니다.")
@@ -149,8 +157,9 @@ class LoginPage(QWidget):
                 if not validate_uuid_format(self.uuid):
                     QMessageBox.warning(self, "형식 오류", "UUID 형식이 올바르지 않습니다. 다시 확인해주세요. 🔍")
                     return
-
-                if not verify_uuid_with_server(self.uuid):
+                
+                result = ServerApi().auth_verify(device_id=self.uuid)
+                if isinstance(result, VerifyDenied):
                     QMessageBox.warning(self, "인증 실패", "등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
                     return
 
