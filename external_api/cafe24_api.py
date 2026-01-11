@@ -1,4 +1,5 @@
 import base64
+import json
 import webbrowser
 
 import requests
@@ -16,6 +17,7 @@ class Cafe24Api:
         self.refresh_token = None
         self.redirect_uri = f"https://{mall_id}.cafe24.com/order/basket.html"
         self.base_url = f"https://{mall_id}.cafe24api.com/api/v2"
+        self.api_base_url = f"https://{mall_id}.cafe24api.com/api/v2/admin"
 
     def get_authorization_url(self, state="manageMall",
                               scope="mall.write_community,mall.read_community,mall.read_product"):
@@ -66,3 +68,22 @@ class Cafe24Api:
             return False
 
         return True
+
+    def get_review_board_articles(self, board_no, limit=10):
+        """
+        특정 게시판(board_no)의 게시글 목록을 가져옵니다.
+        """
+        review_board_url = f"{self.api_base_url}/boards/4/articles"
+
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+            "X-Cafe24-Api-Version": "2025-12-01"  # 카페24 권장 버전 헤더
+        }
+
+        try:
+            response = requests.get(review_board_url, headers=headers)
+            response.raise_for_status()  # 200 OK가 아니면 에러 발생
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e), "detail": response.text if response else "No response"}
