@@ -1,11 +1,13 @@
-from urllib.parse import urlparse, parse_qs
+import sys
+from datetime import datetime, timedelta
 
-from PyQt6.QtWidgets import (QProgressBar)
 from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import (QProgressBar, QMessageBox)
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSpinBox, QFileDialog, QPlainTextEdit)
 
 from external_api.cafe24_api import Cafe24Api
+from global_constants import IS_SAMPLE, BUILD_DATE
 from logger.file_logger import logger
 from ui.main.mall_id_edit import MallIdEdit
 from worker import ApiWorker
@@ -14,7 +16,7 @@ from worker import ApiWorker
 class AuthWorker(QThread):
     """브라우저 인증 과정을 백그라운드에서 처리하는 워커"""
     finished_signal = pyqtSignal(str)  # 성공 시 auth_code 전달
-    error_signal = pyqtSignal(str)     # 실패 시 에러 메시지 전달
+    error_signal = pyqtSignal(str)  # 실패 시 에러 메시지 전달
 
     def __init__(self, api_interface):
         super().__init__()
@@ -50,6 +52,30 @@ class MainPage(QWidget):
         self.lbl_board = None
         self.progress_bar = None
         self.init_ui()
+
+        # 프로그램 실행 시 라이선스(샘플 기간) 체크 수행
+        self.check_license()
+
+    def check_license(self):
+        """샘플 버전일 경우 빌드 날짜로부터 2일간만 사용 가능하도록 제한"""
+        if IS_SAMPLE:
+            try:
+                build_date = datetime.strptime(BUILD_DATE, "%Y-%m-%d")
+                expiration_date = build_date + timedelta(days=2)
+                current_date = datetime.now()
+
+                if current_date > expiration_date:
+                    QMessageBox.critical(
+                        self,
+                        "기간 만료",
+                        f"사용 기간이 만료되었습니다.\n(만료일: {expiration_date.strftime('%Y-%m-%d')})\n개발자에게 문의하세요."
+                    )
+                    sys.exit(0)  # 프로그램 강제 종료
+                else:
+                    logger.info(f"Trial Mode 실행 중. 만료일: {expiration_date.strftime('%Y-%m-%d')}")
+            except ValueError:
+                logger.error("Global Constants의 날짜 형식이 잘못되었습니다.")
+                sys.exit(0)
 
     def init_ui(self):
         # 전체 메인 레이아웃 (수직)
@@ -168,11 +194,11 @@ class MainPage(QWidget):
             return
 
         self.cafe24_interface = Cafe24Api(mall_id)
-        
+
         # UI 비활성화 및 안내
         self.btn_refresh.setEnabled(False)
         self.append_log("⏳ 브라우저를 실행합니다. 로그인 후 권한 동의를 진행해주세요...")
-        
+
         # 백그라운드 스레드에서 인증 시작
         self.auth_worker = AuthWorker(self.cafe24_interface)
         self.auth_worker.finished_signal.connect(self.on_auth_success)
@@ -220,10 +246,10 @@ class MainPage(QWidget):
 
         # Worker 쓰레드 생성 및 시작
         if not self.cafe24_interface or not self.cafe24_interface.access_token:
-             self.append_log("❌ 오류: 먼저 '인증' 버튼을 눌러 인증을 완료해주세요.")
-             self.btn_submit.setEnabled(True)
-             self.btn_select_file.setEnabled(True)
-             return
+            self.append_log("❌ 오류: 먼저 '인증' 버튼을 눌러 인증을 완료해주세요.")
+            self.btn_submit.setEnabled(True)
+            self.btn_select_file.setEnabled(True)
+            return
 
         self.worker = ApiWorker(self.cafe24_interface, self.file_path, board_no, product_no)
 

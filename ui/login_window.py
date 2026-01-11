@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QMessageB
 from PyQt6.QtCore import Qt
 
 import version
-from GlobalConstants import GlobalConstants
+from global_constants import IS_DEBUG
 from internal_api.internal_api import verify_uuid_with_server
 from ui.manual_login_dialog import UUIDInputDialog
 from utils.computer_resource import get_system_uuid
@@ -22,7 +22,7 @@ class LoginPage(QWidget):
         self.on_login_success = on_login_success  # 성공 시 다음 페이지 이동 콜백
         self.init_ui()
 
-        if not GlobalConstants.is_debug:
+        if not IS_DEBUG:
             self.check_initial_uuid()
 
     def init_ui(self):
@@ -80,7 +80,7 @@ class LoginPage(QWidget):
             QPushButton:disabled { background-color: #dfe6e9; color: #b2bec3; }
         """)
 
-        if GlobalConstants.is_debug:
+        if IS_DEBUG:
             self.btn_login.setVisible(True)
             self.btn_login.setEnabled(True)
         else:
