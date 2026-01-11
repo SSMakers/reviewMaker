@@ -1,5 +1,7 @@
 import base64
 import json
+import os
+import platform
 from urllib.parse import urlparse, parse_qs
 
 import requests
@@ -41,6 +43,20 @@ class Cafe24Api:
         
         # Selenium 옵션 설정
         options = webdriver.ChromeOptions()
+
+        # 윈도우 환경에서 크롬 바이너리 위치를 명시적으로 찾기 (경로 문제 해결)
+        if platform.system() == "Windows":
+            possible_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe")
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    logger.info(f"Chrome 바이너리 발견: {path}")
+                    options.binary_location = path
+                    break
+
         # 로그인이 필요하므로 headless 모드는 사용하지 않음 (창이 보여야 함)
         
         # 드라이버 자동 설치 및 실행
