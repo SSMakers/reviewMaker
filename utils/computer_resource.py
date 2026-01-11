@@ -9,9 +9,9 @@ def get_system_uuid():
     try:
         os_type = platform.system()
         if os_type == "Windows":
-            # 윈도우: wmic 명령 사용
-            cmd = 'wmic csproduct get uuid'
-            uuid = subprocess.check_output(cmd, shell=True).decode().split('\n')[1].strip()
+            # 윈도우: wmic는 deprecated 되었으므로 PowerShell 명령 사용 (Get-CimInstance)
+            cmd = 'powershell -Command "Get-CimInstance -Class Win32_ComputerSystemProduct | Select-Object -ExpandProperty UUID"'
+            uuid = subprocess.check_output(cmd, shell=True).decode().strip()
         elif os_type == "Darwin":  # Mac
             # 맥: ioreg 명령 사용
             cmd = "ioreg -rd1 -c IOPlatformExpertDevice | grep -E 'IOPlatformUUID'"
