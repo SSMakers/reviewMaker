@@ -31,7 +31,7 @@ class AppController(QMainWindow):
 
     def go_to_main(self):
         """로그인 성공 시 호출되어 메인 화면으로 전환함"""
-        logger.info("[LOG] 메인 화면으로 전환합니다.")
+        logger.info("메인 화면으로 전환합니다.")
         self.stacked_widget.setCurrentIndex(1)
 
 

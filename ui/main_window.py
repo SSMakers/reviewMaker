@@ -99,7 +99,7 @@ class MainPage(QWidget):
         self.lbl_mall_id = QLabel("mall ID")
         self.mall_id_edit = MallIdEdit(self, on_enter_func=self.__get_redirect_url)
         self.mall_id_edit.setFixedHeight(30)
-        self.btn_refresh = QPushButton("새로얻기")
+        self.btn_refresh = QPushButton("인증")
         self.btn_refresh.setFixedHeight(30)
         self.btn_refresh.clicked.connect(self.__get_redirect_url)
 
@@ -219,7 +219,13 @@ class MainPage(QWidget):
         product_no = self.spin_product.value()
 
         # Worker 쓰레드 생성 및 시작
-        self.worker = ApiWorker(self.file_path, board_no, product_no)
+        if not self.cafe24_interface or not self.cafe24_interface.access_token:
+             self.append_log("❌ 오류: 먼저 '인증' 버튼을 눌러 인증을 완료해주세요.")
+             self.btn_submit.setEnabled(True)
+             self.btn_select_file.setEnabled(True)
+             return
+
+        self.worker = ApiWorker(self.cafe24_interface, self.file_path, board_no, product_no)
 
         # 시그널 연결
         self.worker.log_signal.connect(self.append_log)

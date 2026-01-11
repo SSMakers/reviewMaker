@@ -14,6 +14,7 @@ from external_api.utils.url_utils import get_access_refresh_token
 from internal_api.internal_api import get_api_keys
 from logger.file_logger import logger
 
+CAFE24_API_VERSION = "2025-12-01"
 
 class Cafe24Api:
     def __init__(self, mall_id):
@@ -123,7 +124,7 @@ class Cafe24Api:
         headers = {
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json",
-            "X-Cafe24-Api-Version": "2025-12-01"  # 카페24 권장 버전 헤더
+            "X-Cafe24-Api-Version": CAFE24_API_VERSION  # 카페24 권장 버전 헤더
         }
 
         try:
@@ -132,3 +133,27 @@ class Cafe24Api:
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"error": str(e), "detail": response.text if response else "No response"}
+
+    def create_articles(self, board_no, articles):
+        """
+        게시글(리뷰)을 여러 개 등록합니다. (최대 10개 배치 처리)
+        API 문서: https://developers.cafe24.com/docs/ko/api/admin/#create-a-board-post
+        :param board_no: 게시판 번호
+        :param articles: 등록할 게시글 정보가 담긴 딕셔너리 리스트
+        """
+        url = f"{self.api_base_url}/boards/{board_no}/articles"
+
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+            "X-Cafe24-Api-Version": CAFE24_API_VERSION
+        }
+
+        # Cafe24 API 규격에 맞춰 requests 배열에 담아 전송
+        payload = {
+            "shop_no": 1,
+            "requests": articles
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+        return response
