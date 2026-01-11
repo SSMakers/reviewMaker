@@ -1,8 +1,12 @@
 import base64
 import json
-import webbrowser
+from urllib.parse import urlparse, parse_qs
 
 import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
 
 from external_api.utils.url_utils import get_access_refresh_token
 from internal_api.internal_api import get_api_keys
@@ -33,10 +37,35 @@ class Cafe24Api:
             f"scope={scope}"
         )
 
-        logger.info(f"브라우저를 엽니다: {auth_url}")
-        webbrowser.open(auth_url)
+        logger.info(f"브라우저를 실행합니다: {auth_url}")
+        
+        # Selenium 옵션 설정
+        options = webdriver.ChromeOptions()
+        # 로그인이 필요하므로 headless 모드는 사용하지 않음 (창이 보여야 함)
+        
+        # 드라이버 자동 설치 및 실행
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        
+        try:
+            driver.get(auth_url)
+            
+            # 리다이렉트 URI로 이동할 때까지 대기 (최대 300초)
+            WebDriverWait(driver, 300).until(
+                lambda d: d.current_url.startswith(self.redirect_uri)
+            )
+            
+            final_url = driver.current_url
+            logger.info(f"리다이렉트 감지됨: {final_url}")
+            
+            # URL에서 code 파라미터 추출
+            parsed = urlparse(final_url)
+            params = parse_qs(parsed.query)
+            code = params.get('code', [None])[0]
+            
+            return code
 
-        return auth_url
+        finally:
+            driver.quit()  # 브라우저 종료
 
     def fetch_access_token(self, auth_code):
         """

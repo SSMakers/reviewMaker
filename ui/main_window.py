@@ -1,14 +1,34 @@
 from urllib.parse import urlparse, parse_qs
 
 from PyQt6.QtWidgets import (QProgressBar)
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSpinBox, QFileDialog, QPlainTextEdit)
 
 from external_api.cafe24_api import Cafe24Api
 from logger.file_logger import logger
 from ui.main.mall_id_edit import MallIdEdit
-from ui.main.redirected_url_edit import RedirectedUrlEdit
 from worker import ApiWorker
+
+
+class AuthWorker(QThread):
+    """브라우저 인증 과정을 백그라운드에서 처리하는 워커"""
+    finished_signal = pyqtSignal(str)  # 성공 시 auth_code 전달
+    error_signal = pyqtSignal(str)     # 실패 시 에러 메시지 전달
+
+    def __init__(self, api_interface):
+        super().__init__()
+        self.api = api_interface
+
+    def run(self):
+        try:
+            code = self.api.get_authorization_url()
+            if code:
+                self.finished_signal.emit(code)
+            else:
+                self.error_signal.emit("인증 코드를 찾을 수 없습니다.")
+        except Exception as e:
+            self.error_signal.emit(str(e))
 
 
 class MainPage(QWidget):
@@ -88,21 +108,6 @@ class MainPage(QWidget):
         token_layout.addWidget(self.btn_refresh)
         main_layout.addLayout(token_layout)
 
-        # --- 토큰 레이아웃 ---
-        # (1) 상품 번호
-        token_layout = QHBoxLayout()
-        self.lbl_token = QLabel("Redirected URL")
-        self.redirected_url = RedirectedUrlEdit(self, on_enter_func=self.__get_api_token)
-        self.redirected_url.setFixedHeight(60)
-        self.btn_save = QPushButton("저장")
-        self.btn_save.setFixedHeight(60)
-        self.btn_save.clicked.connect(self.__get_api_token)
-
-        token_layout.addWidget(self.lbl_token)
-        token_layout.addWidget(self.redirected_url)
-        token_layout.addWidget(self.btn_save)
-        main_layout.addLayout(token_layout)
-
         # --- 중간 레이아웃 (4. 리뷰 등록 버튼) ---
         self.btn_submit = QPushButton("리뷰 등록 시작")
         self.btn_submit.setFixedHeight(45)
@@ -163,45 +168,32 @@ class MainPage(QWidget):
             return
 
         self.cafe24_interface = Cafe24Api(mall_id)
-        self.cafe24_interface.get_authorization_url()
+        
+        # UI 비활성화 및 안내
+        self.btn_refresh.setEnabled(False)
+        self.append_log("⏳ 브라우저를 실행합니다. 로그인 후 권한 동의를 진행해주세요...")
+        
+        # 백그라운드 스레드에서 인증 시작
+        self.auth_worker = AuthWorker(self.cafe24_interface)
+        self.auth_worker.finished_signal.connect(self.on_auth_success)
+        self.auth_worker.error_signal.connect(self.on_auth_error)
+        self.auth_worker.start()
 
-    def __get_api_token(self):
-        redirected_url = self.redirected_url.toPlainText().strip()
-        if not redirected_url:
-            logger.error("❌ 오류: Redirencted Url를 입력하세요")
-            self.append_log("❌ 오류: Redirencted Url를 입력하세요")
-            return
+    def on_auth_success(self, auth_code):
+        """인증 성공 시 호출: 자동으로 토큰 발급 진행"""
+        self.btn_refresh.setEnabled(True)
+        self.append_log("✅ 인증 코드 획득 성공! 토큰 발급을 진행합니다.")
 
-        try:
-            parsed_url = urlparse(redirected_url)
-            params = parse_qs(parsed_url.query)
-            auth_code = params.get('code', [None])[0]
+        # 토큰 발급 요청
+        if self.cafe24_interface.fetch_access_token(auth_code):
+            self.append_log("✨ Access Token 발급 및 저장 완료!")
+        else:
+            self.append_log("❌ Access Token 발급 실패. 로그를 확인하세요.")
 
-            if not auth_code:
-                logger.warning(f"⚠️ URL에 'code' 파라미터가 포함되어 있지 않습니다.")
-                self.append_log(f"⚠️ URL에 'code' 파라미터가 포함되어 있지 않습니다.")
-                return
-
-            logger.info(f"✅ auth_code 추출 성공")
-            self.append_log(f"✅ auth_code 추출 성공")
-
-            if not self.cafe24_interface:
-                logger.error(f"❌ redirected url을 새로 받아서 입력해주세요")
-                self.append_log(f"❌ redirected url을 새로 받아서 입력해주세요")
-                return
-            is_success_fetch = self.cafe24_interface.fetch_access_token(auth_code)
-
-            if not is_success_fetch:
-                logger.error(f"❌ api token 업데이트 실패")
-                self.append_log(f"❌ api token 업데이트 실패")
-
-        except ValueError as e:
-            logger.warning(f"⚠️ 경고: {e}")
-            self.append_log(f"⚠️ 경고: {e}")
-
-        except Exception as e:
-            logger.error(f"❌ 시스템 오류: {str(e)}")
-            self.append_log(f"❌ 시스템 오류: {str(e)}")
+    def on_auth_error(self, error_msg):
+        """인증 실패 시 호출"""
+        self.btn_refresh.setEnabled(True)
+        self.append_log(f"❌ 인증 과정 중 오류 발생: {error_msg}")
 
     def open_file_dialog(self):
         fname, _ = QFileDialog.getOpenFileName(self, "엑셀 파일 선택", "", "Excel Files (*.xlsx *.xls)")
