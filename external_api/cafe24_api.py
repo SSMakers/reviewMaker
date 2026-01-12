@@ -1,5 +1,4 @@
 import base64
-import json
 import os
 import platform
 from urllib.parse import urlparse, parse_qs
@@ -16,10 +15,12 @@ from logger.file_logger import logger
 
 CAFE24_API_VERSION = "2025-12-01"
 
+
 class Cafe24Api:
-    def __init__(self, mall_id):
+    def __init__(self, mall_id, client_id, client_secret):
         self.mall_id = mall_id
-        self.client_id, self.client_secret = get_api_keys()
+        self.client_id = client_id
+        self.client_secret = client_secret
         self.access_token = None
         self.refresh_token = None
         self.redirect_uri = f"https://{mall_id}.cafe24.com/order/basket.html"
@@ -41,7 +42,7 @@ class Cafe24Api:
         )
 
         logger.info(f"브라우저를 실행합니다: {auth_url}")
-        
+
         # Selenium 옵션 설정
         options = webdriver.ChromeOptions()
 
@@ -59,26 +60,26 @@ class Cafe24Api:
                     break
 
         # 로그인이 필요하므로 headless 모드는 사용하지 않음 (창이 보여야 함)
-        
+
         # 드라이버 자동 설치 및 실행
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-        
+
         try:
             driver.get(auth_url)
-            
+
             # 리다이렉트 URI로 이동할 때까지 대기 (최대 300초)
             WebDriverWait(driver, 300).until(
                 lambda d: d.current_url.startswith(self.redirect_uri)
             )
-            
+
             final_url = driver.current_url
             logger.info(f"리다이렉트 감지됨: {final_url}")
-            
+
             # URL에서 code 파라미터 추출
             parsed = urlparse(final_url)
             params = parse_qs(parsed.query)
             code = params.get('code', [None])[0]
-            
+
             return code
 
         finally:

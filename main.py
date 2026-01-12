@@ -29,9 +29,13 @@ class AppController(QMainWindow):
         # 4. 첫 화면 설정
         self.stacked_widget.setCurrentIndex(0)
 
-    def go_to_main(self):
+    def go_to_main(self, auth_result):
         """로그인 성공 시 호출되어 메인 화면으로 전환함"""
-        logger.info("메인 화면으로 전환합니다.")
+        logger.info(f"메인 화면으로 전환합니다. (인증 정보 수신됨: {auth_result})")
+
+        if hasattr(self.main_page, 'set_auth_info'):
+            self.main_page.set_auth_info(auth_result)
+
         self.stacked_widget.setCurrentIndex(1)
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from typing import Dict, Any
 
@@ -10,8 +11,20 @@ from dotenv import load_dotenv
 from external_api.server.models import parse_verify_response, VerifyConfirm, VerifyDenied
 from logger.file_logger import logger
 
-# .env 파일의 내용을 환경 변수로 로드합니다.
-load_dotenv()
+
+def _get_env_path() -> str:
+    """
+    PyInstaller로 빌드된 환경(sys._MEIPASS)인지, 일반 개발 환경인지 구분하여
+    .env 파일의 절대 경로를 반환합니다.
+    """
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller 임시 폴더 경로
+        return os.path.join(sys._MEIPASS, '.env')
+    # 일반 개발 환경 (현재 작업 디렉토리 기준)
+    return os.path.join(os.getcwd(), '.env')
+
+# .env 파일의 내용을 환경 변수로 로드합니다. (경로 명시)
+load_dotenv(_get_env_path())
 
 
 @dataclass

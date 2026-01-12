@@ -1,36 +1,17 @@
 import sys
 from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (QProgressBar, QMessageBox)
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSpinBox, QFileDialog, QPlainTextEdit)
 
+from api_worker import ApiWorker
+from auth_worker import AuthWorker
 from external_api.cafe24_api import Cafe24Api
+from external_api.server.models import VerifyConfirm
 from global_constants import IS_SAMPLE, BUILD_DATE
 from logger.file_logger import logger
 from ui.main.mall_id_edit import MallIdEdit
-from worker import ApiWorker
-
-
-class AuthWorker(QThread):
-    """브라우저 인증 과정을 백그라운드에서 처리하는 워커"""
-    finished_signal = pyqtSignal(str)  # 성공 시 auth_code 전달
-    error_signal = pyqtSignal(str)  # 실패 시 에러 메시지 전달
-
-    def __init__(self, api_interface):
-        super().__init__()
-        self.api = api_interface
-
-    def run(self):
-        try:
-            code = self.api.get_authorization_url()
-            if code:
-                self.finished_signal.emit(code)
-            else:
-                self.error_signal.emit("인증 코드를 찾을 수 없습니다.")
-        except Exception as e:
-            self.error_signal.emit(str(e))
 
 
 class MainPage(QWidget):
@@ -38,11 +19,15 @@ class MainPage(QWidget):
         super().__init__()
 
         # API
+        self.client_secret = None
+        self.client_id = None
         self.cafe24_interface = None
         self.access_token = None
         self.refresh_token = None
+        self.auth_result = None
 
         # UI
+        self.log_viewer = None
         self.btn_submit = None
         self.btn_select_file = None
         self.lbl_file_status = None
@@ -76,6 +61,22 @@ class MainPage(QWidget):
             except ValueError:
                 logger.error("Global Constants의 날짜 형식이 잘못되었습니다.")
                 sys.exit(0)
+
+    def set_auth_info(self, auth_result):
+        """로그인 페이지로부터 인증 정보를 전달받아 설정합니다."""
+        self.auth_result = auth_result
+        self.client_id = auth_result.client_id
+        self.client_secret = auth_result.secret_key
+
+        if isinstance(auth_result, VerifyConfirm):
+            msg = f"인증 확인됨: 남은 사용 기간 {auth_result.remaining_days}일"
+            logger.info(msg)
+            # UI가 초기화된 상태이므로 로그 창에 환영 메시지 출력
+            self.append_log(f"👋 환영합니다! ({msg})")
+
+            # (선택 사항) 윈도우 타이틀에 남은 기간 표시
+            if self.window():
+                self.window().setWindowTitle(f"Review Writer (남은 기간: {auth_result.remaining_days}일)")
 
     def init_ui(self):
         # 전체 메인 레이아웃 (수직)
@@ -193,7 +194,7 @@ class MainPage(QWidget):
             self.append_log("❌ 오류: 쇼핑몰 ID를 입력하세요")
             return
 
-        self.cafe24_interface = Cafe24Api(mall_id)
+        self.cafe24_interface = Cafe24Api(mall_id, self.client_id, self.client_secret)
 
         # UI 비활성화 및 안내
         self.btn_refresh.setEnabled(False)

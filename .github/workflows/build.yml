@@ -1,4 +1,4 @@
-name: Build Review Program EXE
+name: Build Review Program
 
 # 어떤 상황에서 빌드를 실행할지 결정 (main 브랜치에 코드가 push될 때)
 on:
@@ -9,7 +9,11 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # 윈도우 서버를 빌려옵니다.
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
 
     steps:
     - name: 코드를 가져옵니다
@@ -20,18 +24,37 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: .env 파일을 생성합니다
+      shell: bash
+      run: |
+        echo "${{ secrets.ENV_FILE }}" > .env
+
     - name: 필요한 라이브러리를 설치합니다
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: EXE 파일로 빌드합니다
+    - name: 실행 파일로 빌드합니다 (Windows)
+      if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --noconsole --name "Review_Program" main.py
+        pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env;." main.py
 
-    - name: 결과물(Artifact)을 업로드합니다
+    - name: 실행 파일로 빌드합니다 (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env:." main.py
+
+    - name: 결과물(Artifact)을 업로드합니다 (Windows)
+      if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Review_Program_Windows_EXE
-        path: dist/Review_Program.exe  # 빌드된 파일이 저장된 경로
+        name: Review_Program_Windows
+        path: dist/Review_Program.exe
+
+    - name: 결과물(Artifact)을 업로드합니다 (macOS)
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: Review_Program_macOS
+        path: dist/Review_Program
