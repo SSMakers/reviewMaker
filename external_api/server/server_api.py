@@ -90,6 +90,7 @@ class ServerApi:
                 self._url(path),
                 json=payload,
                 timeout=self.config.timeout_sec,
+                verify=False
             )
         except requests.exceptions.Timeout as e:
             raise TimeoutError(f"Timeout after {self.config.timeout_sec}s") from e
