@@ -11,7 +11,6 @@ from external_api.cafe24_api import Cafe24Api
 from external_api.server.models import VerifyConfirm
 from global_constants import IS_SAMPLE, BUILD_DATE
 from logger.file_logger import logger
-from ui.main.mall_id_edit import MallIdEdit
 
 
 class MainPage(QWidget):
@@ -25,6 +24,7 @@ class MainPage(QWidget):
         self.access_token = None
         self.refresh_token = None
         self.auth_result = None
+        self.mall_id = None
 
         # UI
         self.log_viewer = None
@@ -67,6 +67,7 @@ class MainPage(QWidget):
         self.auth_result = auth_result
         self.client_id = auth_result.client_id
         self.client_secret = auth_result.secret_key
+        self.mall_id = auth_result.mall_id
 
         if isinstance(auth_result, VerifyConfirm):
             msg = f"인증 확인됨: 남은 사용 기간 {auth_result.remaining_days}일"
@@ -123,15 +124,9 @@ class MainPage(QWidget):
         # --- mall id 레이아웃 ---
         # mall id
         token_layout = QHBoxLayout()
-        self.lbl_mall_id = QLabel("mall ID")
-        self.mall_id_edit = MallIdEdit(self, on_enter_func=self.__get_redirect_url)
-        self.mall_id_edit.setFixedHeight(30)
         self.btn_refresh = QPushButton("인증")
         self.btn_refresh.setFixedHeight(30)
         self.btn_refresh.clicked.connect(self.__get_redirect_url)
-
-        token_layout.addWidget(self.lbl_mall_id)
-        token_layout.addWidget(self.mall_id_edit)
         token_layout.addWidget(self.btn_refresh)
         main_layout.addLayout(token_layout)
 
@@ -188,13 +183,12 @@ class MainPage(QWidget):
         self.setLayout(main_layout)
 
     def __get_redirect_url(self):
-        mall_id = self.mall_id_edit.toPlainText().strip()  # 쇼핑몰 ID는 PC의 UUID를 가지고 가져오기
-        if not mall_id:
-            logger.error("❌ 오류: 쇼핑몰 ID를 입력하세요")
-            self.append_log("❌ 오류: 쇼핑몰 ID를 입력하세요")
+        if not self.mall_id:
+            logger.error("❌ 오류: mall ID is invalid")
+            self.append_log("❌ 오류: mall ID is invalid")
             return
 
-        self.cafe24_interface = Cafe24Api(mall_id, self.client_id, self.client_secret)
+        self.cafe24_interface = Cafe24Api(self.mall_id, self.client_id, self.client_secret)
 
         # UI 비활성화 및 안내
         self.btn_refresh.setEnabled(False)

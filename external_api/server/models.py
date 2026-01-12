@@ -13,7 +13,7 @@ class VerifyConfirm:
     remaining_days: int
     client_id: str
     secret_key: str
-    email: str
+    mall_id: str
     redirect_url: str
 
     @staticmethod
@@ -24,7 +24,7 @@ class VerifyConfirm:
             remaining_days=int(d["remaining_days"]),
             client_id=str(d["client_id"]),
             secret_key=str(d["secret_key"]),
-            email=str(d["email"]),
+            mall_id=str(d["mall_id"]),
             redirect_url=str(d["redirect_url"]),
         )
 

@@ -122,7 +122,7 @@ class ServerApi:
             plan: str,
             client_id: str,
             secret_key: str,
-            email: str,
+            mall_id: str,
             redirect_url: str,
     ) -> Dict[str, Any]:
         return self._post("/member/request", {
@@ -130,7 +130,7 @@ class ServerApi:
             "plan": plan,
             "client_id": client_id,
             "secret_key": secret_key,
-            "email": email,
+            "mall_id": mall_id,
             "redirect_url": redirect_url,
         })
 
