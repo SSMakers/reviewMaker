@@ -1,17 +1,18 @@
 from __future__ import annotations
-import os
-from unittest import result
 
+import os
+from dataclasses import dataclass
+from typing import Dict, Any
+
+import requests
 from dotenv import load_dotenv
 
-from dataclasses import dataclass
-from typing import Dict, Any, Optional
-from logger.file_logger import logger
 from external_api.server.models import parse_verify_response, VerifyConfirm, VerifyDenied
-import requests
+from logger.file_logger import logger
 
 # .env 파일의 내용을 환경 변수로 로드합니다.
 load_dotenv()
+
 
 @dataclass
 class ApiConfig:
@@ -31,28 +32,36 @@ def _load_config() -> ApiConfig:
         timeout_sec=timeout,
     )
 
+
 # ---- Error Types ----
 class ApiError(Exception):
     """Base API error."""
 
+
 class NetworkError(ApiError):
     """Cannot reach server (connection error, DNS, etc.)."""
+
 
 class TimeoutError(ApiError):
     """Request timed out."""
 
+
 class HttpError(ApiError):
     """Non-2xx HTTP response."""
+
     def __init__(self, status_code: int, message: str, payload: Any = None):
         super().__init__(f"{status_code}: {message}")
         self.status_code = status_code
         self.payload = payload
 
+
 class BadResponseError(ApiError):
     """Response is not valid JSON (or unexpected format)."""
+
     def __init__(self, message: str, raw_text: str = ""):
         super().__init__(message)
         self.raw_text = raw_text
+
 
 class ServerApi:
     def __init__(self):
@@ -94,14 +103,14 @@ class ServerApi:
     # POST /member/request
     # -------------------------
     def member_request(
-        self,
-        *,
-        device_id: str,
-        plan: str,
-        client_id: str,
-        secret_key: str,
-        email: str,
-        redirect_url: str,
+            self,
+            *,
+            device_id: str,
+            plan: str,
+            client_id: str,
+            secret_key: str,
+            email: str,
+            redirect_url: str,
     ) -> Dict[str, Any]:
         return self._post("/member/request", {
             "device_id": device_id,
@@ -117,12 +126,12 @@ class ServerApi:
     # -------------------------
     def auth_verify(self, *, device_id: str) -> VerifyConfirm | VerifyDenied:
         payload = {"device_id": device_id}
-        data = self._post("/auth/verify", payload)   # 여기서 네트워크/HTTP 예외는 raise
+        data = self._post("/auth/verify", payload)  # 여기서 네트워크/HTTP 예외는 raise
         result = parse_verify_response(data)
 
-        if (isinstance(result, VerifyConfirm)):
+        if isinstance(result, VerifyConfirm):
             logger.info(f"인증 확인: 남은일수={result.remaining_days}")
-        elif (isinstance(result, VerifyDenied)):
+        elif isinstance(result, VerifyDenied):
             logger.info(f"{device_id} 인증 실패 : {result.reason}")
 
         return result

@@ -1,7 +1,7 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional, Literal, Dict, Any
 
+from dataclasses import dataclass
+from typing import Literal, Dict, Any
 
 VerifyResultType = Literal["confirm", "denied"]
 

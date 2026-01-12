@@ -128,7 +128,7 @@ class LoginPage(QWidget):
             self.lbl_info.setText(f"❌ {message}")
             self.lbl_info.setStyleSheet("color: #d63031; font-weight: bold; font-size: 13px;")
             self.btn_login.setVisible(False)
-            self.btn_manual.setVisible(True)
+            self.btn_manual.setVisible(False)
 
     def check_initial_uuid(self):
         # UUID 추출 로직 호출 (예: get_system_uuid())
@@ -138,7 +138,8 @@ class LoginPage(QWidget):
         if self.uuid:
             result = ServerApi().auth_verify(device_id=self.uuid)
             if isinstance(result, VerifyDenied):
-                QMessageBox.warning(self, "인증 실패", "등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
+                self.set_auth_status(False, f"{self.uuid} 등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
+                # QMessageBox.warning(self, "인증 실패", "등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
                 return
             else:
                 self.set_auth_status(True, f"자동 인증 성공 (ID: {self.uuid[:8]}...)")
