@@ -12,23 +12,21 @@ from dotenv import load_dotenv
 from external_api.server.models import parse_verify_response, VerifyConfirm, VerifyDenied
 from logger.file_logger import logger
 
-def _get_root_path() -> Path:
-    """
-    PyInstaller(sys._MEIPASS)면 임시 폴더,
-    아니면 실행 디렉토리 기준 루트 경로를 반환
-    """
-    if hasattr(sys, "_MEIPASS"):
-        return Path(sys._MEIPASS)
-    return Path(os.getcwd())
-
 def _get_env_path() -> str:
-    return str(_get_root_path() / ".env")
+    """
+    PyInstaller로 빌드된 환경(sys._MEIPASS)인지, 일반 개발 환경인지 구분하여
+    .env 파일의 절대 경로를 반환합니다.
+    """
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, '.env')
+    return os.path.join(os.getcwd(), '.env')
+
+load_dotenv(_get_env_path())
 
 def _get_cert_path(relative_path: str) -> str:
-    return str((_get_root_path() / relative_path).resolve())
-
-# .env 파일의 내용을 환경 변수로 로드합니다. (경로 명시)
-load_dotenv(_get_env_path())
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.getcwd(), relative_path)
 
 @dataclass
 class ApiConfig:
@@ -43,11 +41,12 @@ def _load_config() -> ApiConfig:
         raise RuntimeError("API_BASE_URL is not set in .env")
 
     timeout = float(os.getenv("API_TIMEOUT_SEC", "10"))
-    api_ca_cert_path = Path(os.getenv("API_CA_CERT_PATH"))
-    if not api_ca_cert_path:
+    cert_env = os.getenv("API_CA_CERT_PATH")
+
+    if cert_env is None:
         raise RuntimeError("API_CA_CERT_PATH is not set in .env")
-    
-    api_ca_cert_path = _get_cert_path(api_ca_cert_path)
+
+    api_ca_cert_path = _get_cert_path(cert_env)
     if not os.path.exists(api_ca_cert_path):
         raise RuntimeError(f"CA cert not found: {api_ca_cert_path}")
 
