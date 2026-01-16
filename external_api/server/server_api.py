@@ -27,8 +27,8 @@ def _get_env_path() -> str:
 def _get_cert_path(relative_path: str) -> str:
     return str((_get_root_path() / relative_path).resolve())
 
-print("API_CA_CERT_PATH =", os.getenv("API_CA_CERT_PATH"))
-print("Resolved CA path =", _get_cert_path("certs/dev_ca.crt"))
+logger.info("API_CA_CERT_PATH =", os.getenv("API_CA_CERT_PATH"))
+logger.info("Resolved CA path =", _get_cert_path("certs/dev_ca.crt"))
 
 # .env 파일의 내용을 환경 변수로 로드합니다. (경로 명시)
 load_dotenv(_get_env_path())
