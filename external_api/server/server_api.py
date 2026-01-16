@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import sys
 from dataclasses import dataclass
 from typing import Dict, Any
@@ -11,21 +12,23 @@ from dotenv import load_dotenv
 from external_api.server.models import parse_verify_response, VerifyConfirm, VerifyDenied
 from logger.file_logger import logger
 
+def _get_root_path() -> Path:
+    """
+    PyInstaller(sys._MEIPASS)면 임시 폴더,
+    아니면 실행 디렉토리 기준 루트 경로를 반환
+    """
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(os.getcwd())
 
 def _get_env_path() -> str:
-    """
-    PyInstaller로 빌드된 환경(sys._MEIPASS)인지, 일반 개발 환경인지 구분하여
-    .env 파일의 절대 경로를 반환합니다.
-    """
-    if hasattr(sys, '_MEIPASS'):
-        # PyInstaller 임시 폴더 경로
-        return os.path.join(sys._MEIPASS, '.env')
-    # 일반 개발 환경 (현재 작업 디렉토리 기준)
-    return os.path.join(os.getcwd(), '.env')
+    return str(_get_root_path() / ".env")
+
+def _get_cert_path(relative_path: str) -> str:
+    return str((_get_root_path() / relative_path).resolve())
 
 # .env 파일의 내용을 환경 변수로 로드합니다. (경로 명시)
 load_dotenv(_get_env_path())
-
 
 @dataclass
 class ApiConfig:
@@ -40,7 +43,13 @@ def _load_config() -> ApiConfig:
         raise RuntimeError("API_BASE_URL is not set in .env")
 
     timeout = float(os.getenv("API_TIMEOUT_SEC", "10"))
-    api_ca_cert_path = os.getenv("API_CA_CERT_PATH")
+    api_ca_cert_path = Path(os.getenv("API_CA_CERT_PATH"))
+    if not api_ca_cert_path:
+        raise RuntimeError("API_CA_CERT_PATH is not set in .env")
+    
+    api_ca_cert_path = _get_cert_path(api_ca_cert_path)
+    if not os.path.exists(api_ca_cert_path):
+        raise RuntimeError(f"CA cert not found: {api_ca_cert_path}")
 
     return ApiConfig(
         base_url=base_url,
@@ -83,6 +92,10 @@ class ServerApi:
     def __init__(self):
         self.config = _load_config()
         self.session = requests.Session()
+        if getattr(self.config, "api_ca_cert_path", None):
+            self.session.verify = str(self.config.api_ca_cert_path)
+        else:
+            raise RuntimeError("API_CA_CERT_PATH is not set (CA cert required)")
 
     def _url(self, path: str) -> str:
         return self.config.base_url.rstrip("/") + "/" + path.lstrip("/")
@@ -93,7 +106,6 @@ class ServerApi:
                 self._url(path),
                 json=payload,
                 timeout=self.config.timeout_sec,
-                verify=self.config.api_ca_cert_path or True,
             )
         except requests.exceptions.Timeout as e:
             raise TimeoutError(f"Timeout after {self.config.timeout_sec}s") from e
