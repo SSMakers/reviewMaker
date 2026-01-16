@@ -31,6 +31,7 @@ load_dotenv(_get_env_path())
 class ApiConfig:
     base_url: str
     timeout_sec: float
+    api_ca_cert_path: str
 
 
 def _load_config() -> ApiConfig:
@@ -39,10 +40,12 @@ def _load_config() -> ApiConfig:
         raise RuntimeError("API_BASE_URL is not set in .env")
 
     timeout = float(os.getenv("API_TIMEOUT_SEC", "10"))
+    api_ca_cert_path = os.getenv("API_CA_CERT_PATH")
 
     return ApiConfig(
         base_url=base_url,
         timeout_sec=timeout,
+        api_ca_cert_path=api_ca_cert_path,
     )
 
 
@@ -90,6 +93,7 @@ class ServerApi:
                 self._url(path),
                 json=payload,
                 timeout=self.config.timeout_sec,
+                verify=self.config.api_ca_cert_path or True,
             )
         except requests.exceptions.Timeout as e:
             raise TimeoutError(f"Timeout after {self.config.timeout_sec}s") from e
