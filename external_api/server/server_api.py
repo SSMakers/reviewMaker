@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Dict, Any
 
 import requests
-from dotenv import load_dotenv
 
 from external_api.server.models import parse_verify_response, VerifyConfirm, VerifyDenied
 from logger.file_logger import logger
@@ -21,17 +20,8 @@ def _get_root_path() -> Path:
         return Path(sys._MEIPASS)
     return Path(os.getcwd())
 
-def _get_env_path() -> str:
-    return str(_get_root_path() / ".env")
-
 def _get_cert_path(relative_path: str) -> str:
     return str((_get_root_path() / relative_path).resolve())
-
-logger.info("API_CA_CERT_PATH =", os.getenv("API_CA_CERT_PATH"))
-logger.info("Resolved CA path =", _get_cert_path("certs/dev_ca.crt"))
-
-# .env 파일의 내용을 환경 변수로 로드합니다. (경로 명시)
-load_dotenv(_get_env_path())
 
 @dataclass
 class ApiConfig:

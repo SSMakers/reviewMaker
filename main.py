@@ -1,11 +1,27 @@
+import os
 import sys
 
 from PyQt6.QtWidgets import QApplication, QStackedWidget, QMainWindow
+from trio import Path
 
 from logger.file_logger import logger
 from ui.login_window import LoginPage
 from ui.main_window import MainPage  # 아직 만들지 않았다면 아래 3번 참고
+from dotenv import load_dotenv
 
+def _get_root_path() -> Path:
+    """
+    PyInstaller(sys._MEIPASS)면 임시 폴더,
+    아니면 실행 디렉토리 기준 루트 경로를 반환
+    """
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(os.getcwd())
+
+def _get_env_path() -> str:
+    return str(_get_root_path() / ".env")
+
+load_dotenv(_get_env_path())
 
 class AppController(QMainWindow):
     def __init__(self):
