@@ -38,12 +38,12 @@ jobs:
     - name: 실행 파일로 빌드합니다 (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env;." main.py
+        pyinstaller --onefile --noconsole --name "Review_Program" --add-data "certs;certs" --add-data ".env;." main.py
 
     - name: 실행 파일로 빌드합니다 (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env:." main.py
+        pyinstaller --onefile --noconsole --name "Review_Program" --add-data "certs;certs" --add-data ".env:." main.py
 
     - name: 결과물(Artifact)을 업로드합니다 (Windows)
       if: matrix.os == 'windows-latest'
