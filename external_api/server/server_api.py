@@ -39,18 +39,20 @@ class ApiConfig:
     timeout_sec: float
     api_ca_cert_path: str
 
-
 def _load_config() -> ApiConfig:
     base_url = os.getenv("API_BASE_URL")
     if not base_url:
         raise RuntimeError("API_BASE_URL is not set in .env")
 
     timeout = float(os.getenv("API_TIMEOUT_SEC", "10"))
-    api_ca_cert_path = Path(os.getenv("API_CA_CERT_PATH"))
-    if not api_ca_cert_path:
+
+    ca_env = os.getenv("API_CA_CERT_PATH")
+    if not ca_env:
         raise RuntimeError("API_CA_CERT_PATH is not set in .env")
-    
+
+    api_ca_cert_path = Path(ca_env)
     api_ca_cert_path = _get_cert_path(api_ca_cert_path)
+
     if not os.path.exists(api_ca_cert_path):
         raise RuntimeError(f"CA cert not found: {api_ca_cert_path}")
 
