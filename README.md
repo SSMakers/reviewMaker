@@ -1,45 +1,66 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+# 📝 Review Writer (리뷰 작성 자동화 도구)
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
-
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
-
----
-
-## Edit a file
-
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
-
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+**Review Writer**는 Cafe24 쇼핑몰 운영자를 위한 리뷰 등록 자동화 솔루션입니다.  
+번거로운 리뷰 등록 작업을 엑셀 파일 하나로 손쉽게 처리하세요! 🚀
 
 ---
 
-## Create a file
+## ✨ 주요 기능
 
-Next, you’ll add a new file to this repository.
-
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
-
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
+*   **🔒 강력한 보안 인증**: 기기 고유값(UUID)을 기반으로 허용된 사용자만 접근할 수 있습니다.
+*   **📂 엑셀 일괄 처리**: 수십, 수백 개의 리뷰 데이터를 엑셀 파일로 정리해 한 번에 등록할 수 있습니다.
+*   **🛍️ Cafe24 API 연동**: 쇼핑몰 공식 API를 사용하여 안전하고 정확하게 데이터를 전송합니다.
+*   **🖥️ 직관적인 UI**: 복잡한 설정 없이 필수 정보만 입력하면 바로 사용할 수 있는 심플한 디자인.
+*   **📊 실시간 모니터링**: 작업 진행률과 상세 로그를 실시간으로 확인할 수 있습니다.
 
 ---
 
-## Clone a repository
+## 🛠️ 사용 방법
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+### 1. 프로그램 시작
+프로그램을 실행하면 자동으로 기기 인증을 수행합니다.
+*   ✅ **인증 성공**: 메인 화면으로 자동 이동합니다.
+*   ❌ **인증 실패**: 등록되지 않은 기기일 경우 관리자에게 문의해주세요.
 
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
+### 2. 메인 화면 설정
+메인 화면에서 리뷰 등록에 필요한 정보를 입력합니다.
 
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+1.  **🔢 게시판 번호**: 리뷰를 업로드할 쇼핑몰 게시판의 고유 번호를 입력하세요.
+2.  **📦 상품 번호**: 리뷰를 연결할 상품의 고유 번호를 입력하세요.
+3.  **📄 파일 선택**: 작성해둔 리뷰 엑셀 파일을 선택합니다. (`.xlsx`, `.xls`)
+
+### 3. 쇼핑몰 인증
+*   화면 중간의 **'인증'** 버튼을 클릭합니다.
+*   브라우저가 열리면 Cafe24 관리자 계정으로 로그인하고 앱 접근 권한을 허용해주세요.
+*   인증이 완료되면 토큰이 자동으로 발급됩니다.
+
+### 4. 작업 시작
+*   모든 설정이 완료되면 **'리뷰 등록 시작'** 버튼을 클릭하세요.
+*   하단의 로그 창을 통해 작업 진행 상황을 실시간으로 확인할 수 있습니다.
+
+---
+
+## 💻 개발 환경
+
+이 프로젝트는 **Python 3.10** 및 **PyQt6**를 기반으로 개발되었습니다.
+
+### 설치 및 실행 (개발자용)
+
+```bash
+# 저장소 클론
+git clone <repository-url>
+
+# 필수 라이브러리 설치
+pip install -r requirements.txt
+
+# 프로그램 실행
+python main.py
+```
+
+### 빌드 (Executable)
+GitHub Actions를 통해 Windows(.exe) 및 macOS(.app) 실행 파일을 자동으로 빌드합니다.
+
+---
+
+## 📞 문의하기
+프로그램 사용 중 문제가 발생하거나 기기 등록이 필요한 경우 관리자에게 문의해주세요.
