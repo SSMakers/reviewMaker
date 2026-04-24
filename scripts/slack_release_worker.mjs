@@ -8,6 +8,16 @@ function textResponse(text, status = 200) {
   });
 }
 
+function slackResponse(text, { inChannel = false, status = 200 } = {}) {
+  return new Response(JSON.stringify({
+    response_type: inChannel ? "in_channel" : "ephemeral",
+    text,
+  }), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
 function getHeader(request, name) {
   return request.headers.get(name) || request.headers.get(name.toLowerCase()) || "";
 }
@@ -222,21 +232,21 @@ export default {
         const taskText = command.endsWith("/review-task") ? text : text.replace(/^(작업|수정)\s+/, "");
         const issue = await createCodingTask(taskText, userName, env);
         const issueUrl = issue.html_url || `https://github.com/${env.GITHUB_REPOSITORY}/issues/${issue.number}`;
-        return textResponse(`Codex 작업 대기 Issue를 생성했습니다.\n${issueUrl}\n\n다음 단계: Codex에게 "Issue #${issue.number} 처리해줘"라고 요청하세요.`);
+        return slackResponse(`Codex 작업 대기 Issue를 생성했습니다.\n${issueUrl}\n\n다음 단계: Codex에게 "Issue #${issue.number} 처리해줘"라고 요청하세요.`, { inChannel: true });
       }
 
       if (isReleaseCommand(command, text)) {
         await triggerReleaseWorkflow(buildReleaseNotes(text, userName), env);
-        return textResponse("Release workflow를 실행했습니다. GitHub Actions와 draft release를 확인해주세요.");
+        return slackResponse("Release workflow를 실행했습니다. GitHub Actions와 draft release를 확인해주세요.", { inChannel: true });
       }
 
-      return textResponse([
+      return slackResponse([
         "사용법:",
         "/review-task README에 테스트용 주석 한 줄 추가",
         "/review-release 배포해",
       ].join("\n"));
     } catch (error) {
-      return textResponse(`요청 처리 실패: ${error.message}`, 500);
+      return slackResponse(`요청 처리 실패: ${error.message}`, { status: 500 });
     }
   },
 };
