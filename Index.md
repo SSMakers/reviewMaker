@@ -44,6 +44,10 @@ flowchart TD
 | `docs/Review Writer 스크린샷 사용자 가이드.pdf` | 고객 전달용 시각 가이드 | 실제 앱 화면 캡처를 중심으로 사용 흐름을 설명하는 PDF입니다. |
 | `docs/assets/guide-*.png` | 가이드용 앱 화면 캡처 | PDF 사용자 가이드에 삽입되는 실제 화면 이미지입니다. |
 | `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
+| `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
+| `.github/ISSUE_TEMPLATE/*.md` | GitHub Issue 템플릿 | 버그 리포트와 기능 요청에 필요한 정보를 표준화합니다. |
+| `.github/pull_request_template.md` | GitHub PR 템플릿 | 변경 유형, 버전 bump, 테스트, 릴리즈 노트, 리스크를 PR마다 확인합니다. |
+| `.github/workflows/release.yml` | 수동 배포 workflow | `workflow_dispatch`로 실행되며 GitHub Release, Pages `latest.json`, 다운로드 페이지를 생성합니다. |
 | `external_api/cafe24_api.py` | Cafe24 OAuth 및 Admin API client | 브라우저 인증, token 발급, 게시글 생성 요청을 담당합니다. |
 | `external_api/server/server_api.py` | 자체 서버 API client | `.env` 기반 서버 URL/CA 인증서를 로드하고 기기 인증 API와 리뷰 이미지 업로드 API를 호출합니다. |
 | `external_api/server/models.py` | 자체 서버 응답 모델 | 인증 성공/실패, 이미지 업로드 응답을 dataclass로 파싱합니다. |

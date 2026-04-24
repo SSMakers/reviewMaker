@@ -1,0 +1,223 @@
+name: Release Review Program
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: "Release notes shown on GitHub Release"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version.py
+        id: version
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
+          from pathlib import Path
+
+          text = Path("version.py").read_text(encoding="utf-8")
+          values = {}
+          for name in ("MAJOR", "MINOR", "PATCH"):
+              match = re.search(rf"{name}\\s*=\\s*(\\d+)", text)
+              if not match:
+                  raise SystemExit(f"Missing Version.{name}")
+              values[name.lower()] = match.group(1)
+
+          version = f"{values['major']}.{values['minor']}.{values['patch']}"
+          print(f"version={version}")
+          print(f"tag=v{version}")
+          PY
+
+      - name: Ensure tag does not exist
+        shell: bash
+        run: |
+          if git ls-remote --tags origin "${{ steps.version.outputs.tag }}" | grep -q "${{ steps.version.outputs.tag }}"; then
+            echo "Tag ${{ steps.version.outputs.tag }} already exists."
+            exit 1
+          fi
+
+  build:
+    name: Build ${{ matrix.os }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      APP_VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Create .env
+        shell: bash
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Windows executable
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          pyinstaller --onefile --noconsole --name "Review_Program_${env:APP_VERSION}" --add-data ".env;." --add-data "certs;certs" main.py
+
+      - name: Build macOS app
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          pyinstaller --onefile --noconsole --name "Review_Program_${APP_VERSION}" --add-data ".env:." --add-data "certs:certs" main.py
+          cd dist
+          if [ -d "Review_Program_${APP_VERSION}.app" ]; then
+            zip -r "Review_Program_${APP_VERSION}_macOS.zip" "Review_Program_${APP_VERSION}.app"
+          else
+            zip -r "Review_Program_${APP_VERSION}_macOS.zip" "Review_Program_${APP_VERSION}"
+          fi
+
+      - name: Upload Windows release asset
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/Review_Program_${{ env.APP_VERSION }}.exe
+
+      - name: Upload macOS release asset
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/Review_Program_${{ env.APP_VERSION }}_macOS.zip
+
+  release:
+    name: Publish release
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      TAG: ${{ needs.validate.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Prepare release files
+        shell: bash
+        run: |
+          mkdir -p release
+          cp release-assets/release-windows/Review_Program_${VERSION}.exe release/
+          cp release-assets/release-macos/Review_Program_${VERSION}_macOS.zip release/
+          cd release
+          sha256sum * > checksums.txt
+          cat > latest.json <<JSON
+          {
+            "version": "${VERSION}",
+            "published_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "windows": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}.exe",
+              "sha256": "$(sha256sum Review_Program_${VERSION}.exe | awk '{print $1}')"
+            },
+            "macos": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}_macOS.zip",
+              "sha256": "$(sha256sum Review_Program_${VERSION}_macOS.zip | awk '{print $1}')"
+            },
+            "release_notes_url": "https://github.com/${{ github.repository }}/releases/tag/${TAG}"
+          }
+          JSON
+
+      - name: Create GitHub Release
+        shell: bash
+        run: |
+          NOTES="${{ inputs.release_notes }}"
+          if [ -z "$NOTES" ]; then
+            NOTES="Review Writer ${TAG}"
+          fi
+          gh release create "$TAG" release/* \
+            --title "$TAG" \
+            --notes "$NOTES"
+
+      - name: Build Pages site
+        shell: bash
+        run: |
+          mkdir -p public
+          cp release/latest.json public/latest.json
+          cat > public/index.html <<HTML
+          <!doctype html>
+          <html lang="ko">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Review Writer 다운로드</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 48px; color: #132238; }
+              main { max-width: 760px; margin: 0 auto; }
+              a { color: #2563eb; }
+              .card { border: 1px solid #e5eaf0; border-radius: 16px; padding: 24px; background: #f8fafc; }
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>Review Writer</h1>
+              <div class="card">
+                <p>최신 버전: <strong>${TAG}</strong></p>
+                <p><a href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}.exe">Windows 다운로드</a></p>
+                <p><a href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}_macOS.zip">macOS 다운로드</a></p>
+                <p><a href="./latest.json">자동 업데이트 metadata</a></p>
+              </div>
+            </main>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy-pages:
+    name: Deploy Pages
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
