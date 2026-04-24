@@ -26,6 +26,9 @@ DEFAULT_TEST_COMMAND = (
     "python3 -m py_compile main.py auto_updater.py api_worker.py "
     "image_mapping.py review_article_builder.py review_preflight.py ui/main_window.py"
 )
+CODEX_MODE_WORKSPACE = "workspace-write"
+CODEX_MODE_FULL_AUTO = "full-auto"
+CODEX_MODE_DANGER = "danger-full-access"
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,19 @@ def run(
 def load_json(command: list[str], *, workdir: Path) -> Any:
     result = run(command, workdir=workdir)
     return json.loads(result.stdout or "null")
+
+
+def resolve_git_root(path: str) -> Path:
+    start = Path(path).expanduser().resolve()
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=start,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RunnerError(f"git repository root를 찾지 못했습니다: {start}\n{result.stderr.strip()}")
+    return Path(result.stdout.strip()).resolve()
 
 
 def slugify(text: str) -> str:
@@ -215,12 +231,17 @@ def comment_issue(repo: str, issue_number: int, body: str, workdir: Path):
     run(["gh", "issue", "comment", str(issue_number), "-R", repo, "--body", body], workdir=workdir)
 
 
-def build_codex_prompt(issue: Issue) -> str:
+def build_codex_prompt(issue: Issue, *, allow_git_operations: bool) -> str:
+    git_instruction = (
+        "필요하면 git 명령을 직접 실행해도 됩니다. 단 main 브랜치에 직접 push하지 말고 현재 작업 브랜치만 사용하세요."
+        if allow_git_operations
+        else "commit, push, PR 생성은 local runner가 수행하므로 Codex는 하지 마세요."
+    )
     return f"""GitHub Issue #{issue.number}을 처리하세요.
 
 작업 전 반드시 Index.md와 docs/release-process.md를 읽으세요.
 main 브랜치에 직접 push하지 마세요.
-commit, push, PR 생성은 local runner가 수행하므로 Codex는 하지 마세요.
+{git_instruction}
 필요한 코드/문서 수정과 가능한 검증만 수행하세요.
 테스트 또는 검증 결과를 마지막 응답에 요약하세요.
 관련 문서나 Index.md 업데이트가 필요하면 함께 수정하세요.
@@ -236,20 +257,25 @@ Issue body:
 """
 
 
-def run_codex(issue: Issue, workdir: Path, timeout: int):
+def codex_mode_args(mode: str) -> list[str]:
+    if mode == CODEX_MODE_DANGER:
+        return ["--dangerously-bypass-approvals-and-sandbox"]
+    if mode == CODEX_MODE_FULL_AUTO:
+        return ["--full-auto"]
+    return ["--sandbox", "workspace-write"]
+
+
+def run_codex(issue: Issue, workdir: Path, timeout: int, mode: str, allow_git_operations: bool):
     state_dir = workdir / STATE_DIR
     state_dir.mkdir(parents=True, exist_ok=True)
     output_path = state_dir / f"issue-{issue.number}-codex-last-message.txt"
-    prompt = build_codex_prompt(issue)
+    prompt = build_codex_prompt(issue, allow_git_operations=allow_git_operations)
     command = [
         "codex",
         "exec",
         "-C",
         str(workdir),
-        "--sandbox",
-        "workspace-write",
-        "--ask-for-approval",
-        "never",
+        *codex_mode_args(mode),
         "--output-last-message",
         str(output_path),
         prompt,
@@ -318,7 +344,13 @@ def process_issue(args: argparse.Namespace, issue: Issue, workdir: Path):
     set_issue_labels(args.repo, issue, workdir, add=[RUNNING_LABEL], remove=[FAILED_LABEL])
     try:
         branch = checkout_task_branch(issue, workdir)
-        run_codex(issue, workdir, timeout=args.codex_timeout_sec)
+        run_codex(
+            issue,
+            workdir,
+            timeout=args.codex_timeout_sec,
+            mode=args.codex_mode,
+            allow_git_operations=args.allow_codex_git,
+        )
 
         if args.test_command and not args.skip_tests:
             append_log(f"테스트 실행: {args.test_command}", workdir=workdir)
@@ -419,6 +451,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-command", default=DEFAULT_TEST_COMMAND)
     parser.add_argument("--skip-tests", action="store_true")
     parser.add_argument("--allowed-untracked", action="append", default=list(DEFAULT_ALLOWED_UNTRACKED))
+    parser.add_argument(
+        "--codex-mode",
+        choices=[CODEX_MODE_WORKSPACE, CODEX_MODE_FULL_AUTO, CODEX_MODE_DANGER],
+        default=CODEX_MODE_DANGER,
+        help="Codex execution permission mode. Default gives Codex full local permissions.",
+    )
+    parser.add_argument(
+        "--allow-codex-git",
+        action="store_true",
+        help="Allow Codex prompt to perform git operations. Runner still creates the final PR.",
+    )
     args = parser.parse_args()
     if not args.once and not args.watch and not args.dashboard:
         args.once = True
@@ -427,7 +470,7 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
-    workdir = Path(args.workdir).resolve()
+    workdir = resolve_git_root(args.workdir)
     try:
         if args.dashboard:
             dashboard(args, workdir)
