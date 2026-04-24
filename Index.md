@@ -40,11 +40,14 @@ flowchart TD
 | `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, `image_url` 매핑을 관리합니다. |
 | `image_mapping.py` | 리뷰 이미지 출처 결정 | 엑셀 URL, 이미지 파일명, 선택된 이미지 폴더를 기준으로 기존 URL 사용 또는 업로드 대상을 결정합니다. |
 | `review_preflight.py` | 등록 전 사전 검사 | 전체 행, 등록 가능 행, URL 이미지, 업로드 필요 이미지, 경고 수를 계산합니다. |
+| `auto_updater.py` | 앱 자동 업데이트 | Pages `latest.json`을 확인해 새 버전이 있으면 다운로드, SHA256 검증, OS별 교체/재실행을 수행합니다. |
 | `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. |
 | `docs/Review Writer 스크린샷 사용자 가이드.pdf` | 고객 전달용 시각 가이드 | 실제 앱 화면 캡처를 중심으로 사용 흐름을 설명하는 PDF입니다. |
 | `docs/assets/guide-*.png` | 가이드용 앱 화면 캡처 | PDF 사용자 가이드에 삽입되는 실제 화면 이미지입니다. |
 | `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
 | `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
+| `docs/slack-release-webhook.md` | Slack 배포 명령 연동 문서 | `/review-release 배포해`로 release workflow를 실행하는 Lambda/Webhook 설정을 설명합니다. |
+| `scripts/slack_release_lambda.py` | Slack Slash Command Lambda 예시 | Slack signature를 검증하고 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `.github/ISSUE_TEMPLATE/*.md` | GitHub Issue 템플릿 | 버그 리포트와 기능 요청에 필요한 정보를 표준화합니다. |
 | `.github/pull_request_template.md` | GitHub PR 템플릿 | 변경 유형, 버전 bump, 테스트, 릴리즈 노트, 리스크를 PR마다 확인합니다. |
 | `.github/workflows/release.yml` | draft release 생성 workflow | `workflow_dispatch`로 실행되며 빌드 산출물과 `latest.json`을 담은 draft GitHub Release를 생성합니다. |
@@ -109,6 +112,7 @@ flowchart TD
 - PR 본문에는 변경 유형, version bump, 현재/다음 버전, 테스트, 릴리즈 노트, 리스크를 적습니다.
 - Slack의 "배포해"는 GitHub Actions release workflow 실행 요청이며, 실제 공개 전 GitHub draft release 화면에서 `Publish release`를 한 번 더 수행합니다.
 - 실행 파일은 GitHub Releases에 올리고, GitHub Pages는 다운로드 페이지와 `latest.json` 같은 최신 버전 metadata를 제공합니다.
+- 앱 실행 시 `auto_updater.py`가 `UPDATE_LATEST_URL` 또는 기본 Pages URL의 `latest.json`을 확인하고, 새 버전이 있으면 사용자 승인 후 OS별 업데이트를 적용합니다.
 - 상세 운영 규칙은 `docs/release-process.md`를 따릅니다.
 
 ## Refactoring Notes
@@ -136,6 +140,7 @@ flowchart TD
 - `API_TIMEOUT_SEC`: 일반 JSON API timeout, 기본 10초
 - `API_UPLOAD_TIMEOUT_SEC`: 이미지 업로드 timeout, 기본 60초
 - `API_CA_CERT_PATH`: 서버 TLS CA 인증서 경로
+- `UPDATE_LATEST_URL`: 자동 업데이트 metadata URL. 기본값은 `https://ssmakers.github.io/reviewMaker/latest.json`입니다.
 
 디버그 모드에서 Cafe24 인증/업로드까지 테스트할 때 필요한 환경 변수:
 

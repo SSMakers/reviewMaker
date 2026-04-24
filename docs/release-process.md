@@ -80,8 +80,8 @@ class Version:
 ```text
 Git tag: v1.0.1
 GitHub Release: v1.0.1
-Windows artifact: Review_Program_v1.0.1.exe
-macOS artifact: Review_Program_v1.0.1_macOS.zip
+Windows artifact: Review_Program_1.0.1.exe
+macOS artifact: Review_Program_1.0.1_macOS.zip
 Pages metadata: latest.json version = 1.0.1
 ```
 
@@ -99,11 +99,11 @@ Pages metadata: latest.json version = 1.0.1
   "version": "1.0.1",
   "published_at": "2026-04-24",
   "windows": {
-    "url": "https://github.com/SSMakers/reviewMaker/releases/download/v1.0.1/Review_Program_v1.0.1.exe",
+    "url": "https://github.com/SSMakers/reviewMaker/releases/download/v1.0.1/Review_Program_1.0.1.exe",
     "sha256": "..."
   },
   "macos": {
-    "url": "https://github.com/SSMakers/reviewMaker/releases/download/v1.0.1/Review_Program_v1.0.1_macOS.zip",
+    "url": "https://github.com/SSMakers/reviewMaker/releases/download/v1.0.1/Review_Program_1.0.1_macOS.zip",
     "sha256": "..."
   },
   "release_notes_url": "https://github.com/SSMakers/reviewMaker/releases/tag/v1.0.1"
@@ -118,19 +118,21 @@ Pages metadata: latest.json version = 1.0.1
 3. 새 버전이 있으면 사용자에게 업데이트 안내
 4. 사용자가 동의하면 GitHub Release asset 다운로드
 5. sha256 검증
-6. 업데이트 파일 실행 또는 교체 후 재시작 안내
+6. OS별 교체 스크립트 실행 후 앱 재시작
 ```
 
 ## 승인 정책
 
 초기 운영은 안전 우선으로 진행합니다.
 
-- Slack의 "배포해" 명령은 draft release 생성 workflow 시작 요청입니다.
+- Slack의 `/review-release 배포해` 명령은 draft release 생성 workflow 시작 요청입니다.
 - 실제 배포 공개 전 GitHub Release 화면에서 `Publish release`를 한 번 더 눌러야 합니다.
 - 최종 배포자는 draft release에서 대상 버전, commit, release notes, asset을 확인하고 publish합니다.
 - release가 publish되면 별도 Pages workflow가 `latest.json`과 다운로드 페이지를 갱신합니다.
 
 이 방식은 GitHub environment required reviewers를 사용할 수 없을 때도 최종 승인 단계를 유지할 수 있습니다. 운영 안정화 후에는 Slack 승인만으로 release를 바로 publish하는 방식으로 완화할 수 있습니다.
+
+Slack Slash Command 연동 상세는 `docs/slack-release-webhook.md`를 따릅니다.
 
 ## 금지 사항
 

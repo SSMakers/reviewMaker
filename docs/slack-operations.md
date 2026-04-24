@@ -70,9 +70,15 @@ PR:
 PR이 merge된 뒤 개발자가 Slack에서 아래처럼 요청합니다.
 
 ```text
-배포해
-대상 버전: vX.Y.Z
-비고:
+/review-release 배포해
+```
+
+릴리즈 노트를 함께 전달하려면 아래처럼 입력합니다.
+
+```text
+/review-release 배포해 이미지 업로드 안정화 및 자동 업데이트 추가
 ```
 
 이 명령은 GitHub Actions release workflow 실행 요청입니다. workflow는 draft GitHub Release를 생성합니다. 실제 사용자 공개 전 GitHub Release 화면에서 산출물과 릴리즈 노트를 확인한 뒤 `Publish release`를 눌러 최종 승인합니다.
+
+Slack Slash Command endpoint 설정은 `docs/slack-release-webhook.md`를 참고합니다.

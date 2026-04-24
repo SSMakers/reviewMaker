@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
@@ -34,6 +35,34 @@ def _cell_to_optional_value(value: Any) -> Any | None:
     return value
 
 
+def _cell_to_optional_string(value: Any) -> str | None:
+    if pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _cell_to_optional_int(value: Any) -> int | None:
+    if pd.isna(value) or str(value).strip() == "":
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _cell_to_optional_date_string(value: Any) -> str | None:
+    if pd.isna(value) or str(value).strip() == "":
+        return None
+    if isinstance(value, pd.Timestamp):
+        value = value.to_pydatetime()
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    return str(value).strip()
+
+
 def build_article_from_excel_row(
         row: pd.Series,
         *,
@@ -43,9 +72,9 @@ def build_article_from_excel_row(
     title = _cell_to_string(row.get(EXCEL_COLUMN_TITLE, ""))
     writer_name = _cell_to_string(row.get(EXCEL_COLUMN_WRITER, DEFAULT_WRITER_NAME), DEFAULT_WRITER_NAME)
     content = _cell_to_string(row.get(EXCEL_COLUMN_CONTENT, ""))
-    rating = _cell_to_optional_value(row.get(EXCEL_COLUMN_RATING))
-    created_date = _cell_to_optional_value(row.get(EXCEL_COLUMN_CREATED_DATE))
-    image_url = image_url_override or _cell_to_optional_value(row.get(EXCEL_COLUMN_IMAGE_URL))
+    rating = _cell_to_optional_int(row.get(EXCEL_COLUMN_RATING))
+    created_date = _cell_to_optional_date_string(row.get(EXCEL_COLUMN_CREATED_DATE))
+    image_url = image_url_override if image_url_override is not None else _cell_to_optional_string(row.get(EXCEL_COLUMN_IMAGE_URL))
 
     if not title:
         title = content[:20] if len(content) > 20 else content
@@ -60,8 +89,8 @@ def build_article_from_excel_row(
         "client_ip": DEFAULT_CLIENT_IP,
     }
 
-    if rating:
-        article_data["rating"] = int(rating)
+    if rating is not None:
+        article_data["rating"] = rating
     if created_date:
         article_data["created_date"] = created_date
     if image_url:

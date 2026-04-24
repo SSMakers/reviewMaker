@@ -29,6 +29,7 @@ class MainPage(QWidget):
         self.auth_result = None
         self.mall_id = None
         self.device_id = None
+        self.file_path = None
 
         # UI
         self.log_viewer = None
@@ -280,11 +281,17 @@ class MainPage(QWidget):
         self.btn_submit.setEnabled(False)
         self.btn_select_file.setEnabled(False)
         self.btn_select_image_folder.setEnabled(False)
+        self.cmb_image_mapping.setEnabled(False)
         self.log_viewer.clear()
+        self.progress_bar.setValue(0)
 
         # 스핀박스에서 값 가져오기
         board_no = self.spin_board.value()
         product_no = self.spin_product.value()
+        image_mapping_mode = self.cmb_image_mapping.currentData()
+        self.append_log(f"이미지 매칭 방식: {self.cmb_image_mapping.currentText()}")
+        if self.image_folder_path:
+            self.append_log(f"이미지 폴더: {self.image_folder_path}")
 
         # Worker 쓰레드 생성 및 시작
         if not self.cafe24_interface or not self.cafe24_interface.access_token:
@@ -292,6 +299,7 @@ class MainPage(QWidget):
             self.btn_submit.setEnabled(True)
             self.btn_select_file.setEnabled(True)
             self.btn_select_image_folder.setEnabled(True)
+            self.cmb_image_mapping.setEnabled(True)
             return
 
         self.worker = ApiWorker(
@@ -300,7 +308,7 @@ class MainPage(QWidget):
             board_no,
             product_no,
             image_folder_path=self.image_folder_path,
-            image_mapping_mode=self.cmb_image_mapping.currentData(),
+            image_mapping_mode=image_mapping_mode,
             device_id=self.device_id,
             mall_id=self.mall_id,
         )
@@ -319,6 +327,7 @@ class MainPage(QWidget):
         self.btn_submit.setEnabled(True)
         self.btn_select_file.setEnabled(True)
         self.btn_select_image_folder.setEnabled(True)
+        self.cmb_image_mapping.setEnabled(True)
         if success:
             logger.info("✨ 모든 작업이 종료되었습니다.")
             self.append_log("✨ 모든 작업이 종료되었습니다.")

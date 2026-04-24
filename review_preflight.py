@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from image_mapping import ImageMappingMode, resolve_review_image
+from image_mapping import ImageMappingMode, SUPPORTED_IMAGE_EXTENSIONS, resolve_review_image
 from review_article_builder import EXCEL_COLUMN_IMAGE_URL, build_article_from_excel_row
 
 
@@ -86,5 +86,4 @@ def count_image_files(image_folder_path: str | None) -> int:
     folder = Path(image_folder_path)
     if not folder.is_dir():
         return 0
-    allowed = {".jpg", ".jpeg", ".png", ".webp"}
-    return sum(1 for item in folder.iterdir() if item.is_file() and item.suffix.lower() in allowed)
+    return sum(1 for item in folder.iterdir() if item.is_file() and item.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS)

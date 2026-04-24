@@ -9,6 +9,7 @@ import pandas as pd
 
 
 EXCEL_COLUMN_IMAGE_FILENAME = "이미지파일명"
+SUPPORTED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 class ImageMappingMode(str, Enum):
@@ -38,6 +39,15 @@ def _resolve_image_file(image_folder_path: str | None, filename: str) -> Path | 
     if candidate.is_file():
         return candidate
 
+    folder = Path(image_folder_path).expanduser()
+    if not folder.is_dir():
+        return None
+
+    filename_lower = filename.lower()
+    for item in folder.iterdir():
+        if item.is_file() and item.name.lower() == filename_lower:
+            return item
+
     return None
 
 
@@ -56,6 +66,9 @@ def resolve_review_image(
 
     if mapping_mode == ImageMappingMode.URL_THEN_FILENAME and excel_url:
         return ImageResolution(image_url=excel_url)
+
+    if filename and Path(filename).suffix.lower() not in SUPPORTED_IMAGE_EXTENSIONS:
+        return ImageResolution(warning=f"'{filename}' 파일은 지원하지 않는 이미지 형식입니다.")
 
     upload_path = _resolve_image_file(image_folder_path, filename)
     if upload_path:
