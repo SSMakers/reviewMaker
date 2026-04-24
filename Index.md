@@ -49,6 +49,7 @@ flowchart TD
 | `.github/pull_request_template.md` | GitHub PR 템플릿 | 변경 유형, 버전 bump, 테스트, 릴리즈 노트, 리스크를 PR마다 확인합니다. |
 | `.github/workflows/release.yml` | draft release 생성 workflow | `workflow_dispatch`로 실행되며 빌드 산출물과 `latest.json`을 담은 draft GitHub Release를 생성합니다. |
 | `.github/workflows/pages-on-release.yml` | Pages 배포 workflow | draft release가 publish되면 Pages `latest.json`과 다운로드 페이지를 갱신합니다. |
+| `img.png` | README 배포 흐름 이미지 | Slack 요청부터 PR, 테스트 승인, release workflow, draft release 승인, 사용자 업데이트까지의 운영 흐름을 시각화합니다. |
 | `external_api/cafe24_api.py` | Cafe24 OAuth 및 Admin API client | 브라우저 인증, token 발급, 게시글 생성 요청을 담당합니다. |
 | `external_api/server/server_api.py` | 자체 서버 API client | `.env` 기반 서버 URL/CA 인증서를 로드하고 기기 인증 API와 리뷰 이미지 업로드 API를 호출합니다. |
 | `external_api/server/models.py` | 자체 서버 응답 모델 | 인증 성공/실패, 이미지 업로드 응답을 dataclass로 파싱합니다. |

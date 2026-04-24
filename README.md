@@ -15,6 +15,16 @@
 
 ---
 
+## 🚀 운영/배포 흐름
+
+버그 수정이나 기능 추가 요청이 들어오면 Slack 요청, PR 생성, 테스트 승인, Release workflow, GitHub Release 최종 승인, 사용자 업데이트 순서로 배포합니다.
+
+![Review Writer 운영 및 배포 흐름](img.png)
+
+자세한 버전 관리와 승인 규칙은 [릴리즈 운영 문서](docs/release-process.md)를 참고하세요.
+
+---
+
 ## 🛠️ 사용 방법
 
 이미지 URL 자동 생성 기능을 포함한 자세한 사용 절차는 [사용자 가이드](docs/user-guide.md)를 참고하세요. 고객 전달용 화면 중심 문서는 [스크린샷 사용자 가이드 PDF](docs/Review%20Writer%20스크린샷%20사용자%20가이드.pdf)를 사용하면 됩니다.
