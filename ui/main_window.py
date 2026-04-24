@@ -3,14 +3,17 @@ from datetime import datetime, timedelta
 
 from PyQt6.QtWidgets import (QProgressBar, QMessageBox)
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QSpinBox, QFileDialog, QPlainTextEdit)
+                             QLabel, QSpinBox, QFileDialog, QPlainTextEdit, QComboBox)
 
 from api_worker import ApiWorker
 from auth_worker import AuthWorker
 from external_api.cafe24_api import Cafe24Api
 from external_api.server.models import VerifyConfirm
 from global_constants import IS_SAMPLE, BUILD_DATE
+from image_mapping import ImageMappingMode
 from logger.file_logger import logger
+from review_preflight import count_image_files
+from utils.computer_resource import get_system_uuid
 
 
 class MainPage(QWidget):
@@ -25,12 +28,17 @@ class MainPage(QWidget):
         self.refresh_token = None
         self.auth_result = None
         self.mall_id = None
+        self.device_id = None
 
         # UI
         self.log_viewer = None
+        self.btn_select_image_folder = None
         self.btn_submit = None
         self.btn_select_file = None
+        self.cmb_image_mapping = None
+        self.image_folder_path = None
         self.lbl_file_status = None
+        self.lbl_image_folder_status = None
         self.spin_product = None
         self.lbl_product = None
         self.spin_board = None
@@ -68,6 +76,7 @@ class MainPage(QWidget):
         self.client_id = auth_result.client_id
         self.client_secret = auth_result.secret_key
         self.mall_id = auth_result.mall_id
+        self.device_id = get_system_uuid()
 
         if isinstance(auth_result, VerifyConfirm):
             msg = f"인증 확인됨: 남은 사용 기간 {auth_result.remaining_days}일"
@@ -120,6 +129,30 @@ class MainPage(QWidget):
         top_layout.addLayout(product_layout)
         top_layout.addLayout(file_layout)
         main_layout.addLayout(top_layout)
+
+        # --- 이미지 매칭 레이아웃 ---
+        image_layout = QHBoxLayout()
+
+        image_folder_layout = QVBoxLayout()
+        self.lbl_image_folder_status = QLabel("이미지 폴더: 미선택")
+        self.btn_select_image_folder = QPushButton("이미지 폴더 선택")
+        self.btn_select_image_folder.setFixedHeight(30)
+        self.btn_select_image_folder.clicked.connect(self.open_image_folder_dialog)
+        image_folder_layout.addWidget(self.lbl_image_folder_status)
+        image_folder_layout.addWidget(self.btn_select_image_folder)
+
+        image_mapping_layout = QVBoxLayout()
+        image_mapping_layout.addWidget(QLabel("이미지 매칭 방식"))
+        self.cmb_image_mapping = QComboBox()
+        self.cmb_image_mapping.setFixedHeight(30)
+        self.cmb_image_mapping.addItem("URL 우선, 없으면 파일명", ImageMappingMode.URL_THEN_FILENAME.value)
+        self.cmb_image_mapping.addItem("엑셀 URL만 사용", ImageMappingMode.EXCEL_URL_ONLY.value)
+        self.cmb_image_mapping.addItem("파일명으로 매칭", ImageMappingMode.FILENAME_ONLY.value)
+        image_mapping_layout.addWidget(self.cmb_image_mapping)
+
+        image_layout.addLayout(image_folder_layout)
+        image_layout.addLayout(image_mapping_layout)
+        main_layout.addLayout(image_layout)
 
         # --- mall id 레이아웃 ---
         # mall id
@@ -223,6 +256,14 @@ class MainPage(QWidget):
             self.file_path = fname
             logger.info(f"파일 : {fname}")
 
+    def open_image_folder_dialog(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "이미지 폴더 선택", "")
+        if folder_path:
+            self.image_folder_path = folder_path
+            image_count = count_image_files(folder_path)
+            self.lbl_image_folder_status.setText(f"이미지 폴더: {folder_path.split('/')[-1]} ({image_count}개)")
+            logger.info(f"이미지 폴더 : {folder_path}, 이미지 수: {image_count}")
+
     def start_review_process(self):
         # 파일 선택 여부 확인
         if not hasattr(self, 'file_path') or not self.file_path:
@@ -233,6 +274,7 @@ class MainPage(QWidget):
         # UI 상태 변경
         self.btn_submit.setEnabled(False)
         self.btn_select_file.setEnabled(False)
+        self.btn_select_image_folder.setEnabled(False)
         self.log_viewer.clear()
 
         # 스핀박스에서 값 가져오기
@@ -244,9 +286,19 @@ class MainPage(QWidget):
             self.append_log("❌ 오류: 먼저 '인증' 버튼을 눌러 인증을 완료해주세요.")
             self.btn_submit.setEnabled(True)
             self.btn_select_file.setEnabled(True)
+            self.btn_select_image_folder.setEnabled(True)
             return
 
-        self.worker = ApiWorker(self.cafe24_interface, self.file_path, board_no, product_no)
+        self.worker = ApiWorker(
+            self.cafe24_interface,
+            self.file_path,
+            board_no,
+            product_no,
+            image_folder_path=self.image_folder_path,
+            image_mapping_mode=self.cmb_image_mapping.currentData(),
+            device_id=self.device_id,
+            mall_id=self.mall_id,
+        )
 
         # 시그널 연결
         self.worker.log_signal.connect(self.append_log)
@@ -261,6 +313,7 @@ class MainPage(QWidget):
     def on_process_finished(self, success):
         self.btn_submit.setEnabled(True)
         self.btn_select_file.setEnabled(True)
+        self.btn_select_image_folder.setEnabled(True)
         if success:
             logger.info("✨ 모든 작업이 종료되었습니다.")
             self.append_log("✨ 모든 작업이 종료되었습니다.")
@@ -273,18 +326,3 @@ class MainPage(QWidget):
         self.log_viewer.verticalScrollBar().setValue(
             self.log_viewer.verticalScrollBar().maximum()
         )
-
-    def start_process(self):
-        self.btn_run.setEnabled(False)
-        self.worker = ApiWorker(self.file_path, self.url_input.text())
-
-        # 시그널 연결
-        self.worker.progress_update.connect(self.progress_bar.setValue)
-        self.worker.status_update.connect(self.statusBar().showMessage)
-        self.worker.finished.connect(self.on_complete)
-
-        self.worker.start()
-
-    def on_complete(self, success, message):
-        self.statusBar().showMessage(message)
-        self.btn_run.setEnabled(True)

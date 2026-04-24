@@ -3,7 +3,15 @@ import time
 import pandas as pd
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from external_api.server.server_api import ServerApi
+from image_mapping import ImageMappingMode, resolve_review_image
 from logger.file_logger import logger
+from review_article_builder import EXCEL_COLUMN_IMAGE_URL, build_article_from_excel_row
+from review_preflight import analyze_reviews
+
+
+BATCH_SIZE = 10
+BATCH_DELAY_SEC = 0.5
 
 
 class ApiWorker(QThread):
@@ -12,93 +20,128 @@ class ApiWorker(QThread):
     progress_signal = pyqtSignal(int)  # 진행률(%) 전송
     finished_signal = pyqtSignal(bool)  # 종료 알림
 
-    def __init__(self, api_interface, file_path, board_no, product_no):
+    def __init__(
+            self,
+            api_interface,
+            file_path,
+            board_no,
+            product_no,
+            *,
+            image_folder_path=None,
+            image_mapping_mode=ImageMappingMode.URL_THEN_FILENAME,
+            device_id=None,
+            mall_id=None,
+    ):
         super().__init__()
         self.api = api_interface  # Cafe24Api 인스턴스 저장
         self.file_path = file_path
         self.board_no = board_no
         self.product_no = product_no
+        self.image_folder_path = image_folder_path
+        self.image_mapping_mode = ImageMappingMode(image_mapping_mode)
+        self.device_id = device_id
+        self.mall_id = mall_id
+        self.server_api = None
+
+    def _send_batch(self, batch_data, processed_count, total_rows):
+        if not batch_data:
+            return
+
+        try:
+            current_batch_size = len(batch_data)
+            response = self.api.create_articles(self.board_no, batch_data)
+
+            if response.status_code in [200, 201]:
+                self.log_signal.emit(f"✅ [{processed_count}/{total_rows}] {current_batch_size}건 일괄 전송 성공")
+            else:
+                error_detail = response.json() if response.content else response.text
+                self.log_signal.emit(
+                    f"❌ [{processed_count}/{total_rows}] 전송 실패 ({response.status_code}): {error_detail}")
+
+        except Exception as e:
+            self.log_signal.emit(f"⚠️ [{processed_count}/{total_rows}] 네트워크 오류: {str(e)}")
+
+        finally:
+            time.sleep(BATCH_DELAY_SEC)
+
+    def _upload_image(self, upload_path, row_number):
+        if not self.device_id:
+            raise RuntimeError("이미지 업로드를 위한 device_id가 없습니다.")
+        if not self.mall_id:
+            raise RuntimeError("이미지 업로드를 위한 mall_id가 없습니다.")
+        if self.server_api is None:
+            self.server_api = ServerApi()
+
+        result = self.server_api.upload_review_image(
+            file_path=upload_path,
+            device_id=self.device_id,
+            mall_id=self.mall_id,
+            source_row_id=str(row_number),
+        )
+        self.log_signal.emit(f"🖼️ [{row_number}] 이미지 업로드 완료: {upload_path.name}")
+        return result.url
 
     def run(self):
         try:
             self.log_signal.emit(f"🚀 작업을 시작합니다. 파일: {self.file_path}")
 
-            # 1. 엑셀 파일 읽기
             df = pd.read_excel(self.file_path)
             total_rows = len(df)
             self.log_signal.emit(f"📊 총 {total_rows}개의 데이터를 발견했습니다.")
+            if total_rows == 0:
+                self.log_signal.emit("❌ 등록할 데이터가 없습니다.")
+                self.finished_signal.emit(False)
+                return
 
-            batch_data = []  # 데이터를 모을 리스트
+            preflight = analyze_reviews(
+                df,
+                product_no=self.product_no,
+                image_folder_path=self.image_folder_path,
+                mapping_mode=self.image_mapping_mode,
+            )
+            for line in preflight.to_log_lines():
+                self.log_signal.emit(line)
+
+            batch_data = []
             for index, row in df.iterrows():
-                # 2. 데이터 추출 및 전처리
-                # Pandas의 NaN(Not a Number) 값은 JSON 표준이 아니므로 None이나 빈 문자열로 변환해야 합니다.
-                title_val = row.get("제목", "")
-                title = str(title_val).strip() if not pd.isna(title_val) else ""
+                row_number = index + 1
+                base_result = build_article_from_excel_row(row, product_no=self.product_no)
+                if base_result.article is None:
+                    logger.warning(f"{index}열 건너뜀: {base_result.skipped_reason}")
+                    progress = int((row_number / total_rows) * 100)
+                    self.progress_signal.emit(progress)
+                    continue
 
-                writer_val = row.get("작성자", "이재용")
-                writer_name = str(writer_val) if not pd.isna(writer_val) else "이재용"
+                image = resolve_review_image(
+                    row,
+                    image_folder_path=self.image_folder_path,
+                    mapping_mode=self.image_mapping_mode,
+                    image_url_column=EXCEL_COLUMN_IMAGE_URL,
+                )
+                if image.warning:
+                    self.log_signal.emit(f"⚠️ [{row_number}] {image.warning}")
 
-                content_val = row.get("리뷰내용", "")
-                content = str(content_val) if not pd.isna(content_val) else ""
+                image_url = image.image_url
+                if image.upload_path:
+                    image_url = self._upload_image(image.upload_path, row_number)
 
-                rating = row.get("별점")
-                if pd.isna(rating): rating = None
+                result = build_article_from_excel_row(
+                    row,
+                    product_no=self.product_no,
+                    image_url_override=image_url,
+                )
 
-                created_date = row.get("날짜")
-                if pd.isna(created_date): created_date = None
+                batch_data.append(result.article)
 
-                image_url = row.get("하이퍼링크")
-                if pd.isna(image_url): image_url = None
-
-                # 제목 처리 로직: 제목이 비어있으면 본문 앞 20자 사용
-                if not title:
-                    title = content[:20] if len(content) > 20 else content
-                    if not title:  # 본문도 비어있을 경우 방어 코드
-                        logger.warning(f"{index}열 제목, 본문 모두 빈칸입니다.")
-                        continue
-
-                # 개별 게시글 데이터 구성 (API 스펙에 맞춤)
-                article_data = {
-                    "product_no": self.product_no,
-                    "writer": writer_name,
-                    "title": title,
-                    "content": content,
-                    "client_ip": "127.0.0.1"
-                }
-                if rating:
-                    article_data["rating"] = int(rating)
-                if created_date:
-                    article_data["created_date"] = created_date
-                if image_url:
-                    article_data["image_url"] = image_url
-
-                batch_data.append(article_data)
-
-                # 3. 배치 전송 (10개가 모이거나, 마지막 데이터일 때)
-                if len(batch_data) >= 10 or (index + 1) == total_rows:
-                    try:
-                        current_batch_size = len(batch_data)
-                        response = self.api.create_articles(self.board_no, batch_data)
-
-                        if response.status_code in [200, 201]:
-                            self.log_signal.emit(f"✅ [{index + 1}/{total_rows}] {current_batch_size}건 일괄 전송 성공")
-                        else:
-                            error_detail = response.json() if response.content else response.text
-                            self.log_signal.emit(
-                                f"❌ [{index + 1}/{total_rows}] 전송 실패 ({response.status_code}): {error_detail}")
-
-                    except Exception as e:
-                        self.log_signal.emit(f"⚠️ [{index + 1}/{total_rows}] 네트워크 오류: {str(e)}")
-                    
-                    finally:
-                        batch_data = []  # 배치 초기화
-                        # 서버 과부하 방지를 위한 대기 (배치 단위이므로 조금 더 여유를 둠)
-                        time.sleep(0.5)
+                if len(batch_data) >= BATCH_SIZE:
+                    self._send_batch(batch_data, row_number, total_rows)
+                    batch_data = []
 
                 # UI 업데이트를 위한 진행률 계산
-                progress = int(((index + 1) / total_rows) * 100)
+                progress = int((row_number / total_rows) * 100)
                 self.progress_signal.emit(progress)
 
+            self._send_batch(batch_data, total_rows, total_rows)
             self.finished_signal.emit(True)
 
         except Exception as e:

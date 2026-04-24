@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 from pathlib import Path
 import sys
@@ -9,7 +10,12 @@ from typing import Dict, Any
 import requests
 from dotenv import load_dotenv
 
-from external_api.server.models import parse_verify_response, VerifyConfirm, VerifyDenied
+from external_api.server.models import (
+    ReviewImageUploadResult,
+    parse_verify_response,
+    VerifyConfirm,
+    VerifyDenied,
+)
 from logger.file_logger import logger
 
 def _get_env_path() -> str:
@@ -32,6 +38,7 @@ def _get_cert_path(relative_path: str) -> str:
 class ApiConfig:
     base_url: str
     timeout_sec: float
+    upload_timeout_sec: float
     api_ca_cert_path: str
 
 
@@ -41,6 +48,7 @@ def _load_config() -> ApiConfig:
         raise RuntimeError("API_BASE_URL is not set in .env")
 
     timeout = float(os.getenv("API_TIMEOUT_SEC", "10"))
+    upload_timeout = float(os.getenv("API_UPLOAD_TIMEOUT_SEC", "60"))
     cert_env = os.getenv("API_CA_CERT_PATH")
 
     if cert_env is None:
@@ -53,6 +61,7 @@ def _load_config() -> ApiConfig:
     return ApiConfig(
         base_url=base_url,
         timeout_sec=timeout,
+        upload_timeout_sec=upload_timeout,
         api_ca_cert_path=api_ca_cert_path,
     )
 
@@ -127,6 +136,42 @@ class ServerApi:
 
         return data
 
+    def _post_multipart(self, path: str, *, data: Dict[str, Any], file_path: Path) -> Dict[str, Any]:
+        content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+
+        try:
+            with file_path.open("rb") as file_obj:
+                files = {
+                    "file": (file_path.name, file_obj, content_type),
+                }
+                r = self.session.post(
+                    self._url(path),
+                    data=data,
+                    files=files,
+                    timeout=self.config.upload_timeout_sec,
+                )
+        except requests.exceptions.Timeout as e:
+            raise TimeoutError(f"Timeout after {self.config.upload_timeout_sec}s") from e
+        except requests.exceptions.ConnectionError as e:
+            raise NetworkError(f"Cannot connect to server: {e}") from e
+        except OSError as e:
+            raise ApiError(f"Cannot read upload file: {file_path}") from e
+
+        try:
+            response_data = r.json() if r.content else {}
+        except Exception:
+            ct = r.headers.get("Content-Type", "")
+            raise BadResponseError(
+                f"Response is not JSON (status={r.status_code}, content-type={ct})",
+                raw_text=(r.text or "")[:1000],
+            )
+
+        if not r.ok:
+            msg = response_data.get("detail") or response_data.get("message") or r.reason
+            raise HttpError(r.status_code, msg, payload=response_data)
+
+        return response_data
+
     # -------------------------
     # POST /member/request
     # -------------------------
@@ -163,3 +208,28 @@ class ServerApi:
             logger.info(f"{device_id} 인증 실패 : {result.reason}")
 
         return result
+
+    # -------------------------
+    # POST /review-images
+    # -------------------------
+    def upload_review_image(
+            self,
+            *,
+            file_path: str | Path,
+            device_id: str,
+            mall_id: str,
+            source_row_id: str | None = None,
+    ) -> ReviewImageUploadResult:
+        payload = {
+            "device_id": device_id,
+            "mall_id": mall_id,
+        }
+        if source_row_id:
+            payload["source_row_id"] = source_row_id
+
+        data = self._post_multipart(
+            "/review-images",
+            data=payload,
+            file_path=Path(file_path),
+        )
+        return ReviewImageUploadResult.from_dict(data)

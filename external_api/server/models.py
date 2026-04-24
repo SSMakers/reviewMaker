@@ -49,3 +49,20 @@ def parse_verify_response(d: Dict[str, Any]) -> VerifyConfirm | VerifyDenied:
     if r == "denied":
         return VerifyDenied.from_dict(d)
     raise ValueError(f"Unknown verify result: {r} (payload={d})")
+
+
+@dataclass(frozen=True)
+class ReviewImageUploadResult:
+    image_id: str
+    url: str
+    content_type: str
+    size_bytes: int
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ReviewImageUploadResult":
+        return ReviewImageUploadResult(
+            image_id=str(d["image_id"]),
+            url=str(d["url"]),
+            content_type=str(d.get("content_type", "")),
+            size_bytes=int(d.get("size_bytes", 0)),
+        )
