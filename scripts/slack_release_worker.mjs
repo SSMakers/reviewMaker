@@ -82,6 +82,13 @@ function buildReleaseNotes(text, userName) {
   return `Slack 배포 요청 by ${userName}\n\n${text}`;
 }
 
+function truncateForSlack(text, maxLength = 900) {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength - 3)}...`;
+}
+
 function githubHeaders(env) {
   return {
     Accept: "application/vnd.github+json",
@@ -232,12 +239,26 @@ export default {
         const taskText = command.endsWith("/review-task") ? text : text.replace(/^(작업|수정)\s+/, "");
         const issue = await createCodingTask(taskText, userName, env);
         const issueUrl = issue.html_url || `https://github.com/${env.GITHUB_REPOSITORY}/issues/${issue.number}`;
-        return slackResponse(`Codex 작업 대기 Issue를 생성했습니다.\n${issueUrl}\n\n다음 단계: Codex에게 "Issue #${issue.number} 처리해줘"라고 요청하세요.`, { inChannel: true });
+        return slackResponse([
+          "Codex 작업 대기 Issue를 생성했습니다.",
+          "",
+          `요청자: ${userName}`,
+          `요청 내용: ${truncateForSlack(taskText)}`,
+          `Issue: ${issueUrl}`,
+          "",
+          `다음 단계: Local Codex Runner가 켜져 있으면 Issue #${issue.number}를 자동 처리합니다.`,
+        ].join("\n"), { inChannel: true });
       }
 
       if (isReleaseCommand(command, text)) {
         await triggerReleaseWorkflow(buildReleaseNotes(text, userName), env);
-        return slackResponse("Release workflow를 실행했습니다. GitHub Actions와 draft release를 확인해주세요.", { inChannel: true });
+        return slackResponse([
+          "Release workflow를 실행했습니다.",
+          "",
+          `요청자: ${userName}`,
+          `요청 내용: ${truncateForSlack(text)}`,
+          "GitHub Actions와 draft release를 확인해주세요.",
+        ].join("\n"), { inChannel: true });
       }
 
       return slackResponse([
