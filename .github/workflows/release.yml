@@ -10,8 +10,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: release
@@ -120,10 +118,9 @@ jobs:
           path: dist/Review_Program_${{ env.APP_VERSION }}_macOS.zip
 
   release:
-    name: Publish release
+    name: Create draft release
     needs: [validate, build]
     runs-on: ubuntu-latest
-    environment: production
     env:
       VERSION: ${{ needs.validate.outputs.version }}
       TAG: ${{ needs.validate.outputs.tag }}
@@ -170,54 +167,11 @@ jobs:
           fi
           gh release create "$TAG" release/* \
             --title "$TAG" \
-            --notes "$NOTES"
+            --notes "$NOTES" \
+            --draft
 
-      - name: Build Pages site
+      - name: Next step
         shell: bash
         run: |
-          mkdir -p public
-          cp release/latest.json public/latest.json
-          cat > public/index.html <<HTML
-          <!doctype html>
-          <html lang="ko">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>Review Writer 다운로드</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 48px; color: #132238; }
-              main { max-width: 760px; margin: 0 auto; }
-              a { color: #2563eb; }
-              .card { border: 1px solid #e5eaf0; border-radius: 16px; padding: 24px; background: #f8fafc; }
-            </style>
-          </head>
-          <body>
-            <main>
-              <h1>Review Writer</h1>
-              <div class="card">
-                <p>최신 버전: <strong>${TAG}</strong></p>
-                <p><a href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}.exe">Windows 다운로드</a></p>
-                <p><a href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}_macOS.zip">macOS 다운로드</a></p>
-                <p><a href="./latest.json">자동 업데이트 metadata</a></p>
-              </div>
-            </main>
-          </body>
-          </html>
-          HTML
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
-
-  deploy-pages:
-    name: Deploy Pages
-    needs: release
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          echo "Draft release ${TAG} was created."
+          echo "Review it on GitHub and click Publish release to update GitHub Pages/latest.json."

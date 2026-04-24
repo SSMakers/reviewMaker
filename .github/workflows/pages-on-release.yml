@@ -1,0 +1,154 @@
+name: Publish Pages for Latest Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy-pages:
+    name: Deploy Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download release metadata
+        shell: bash
+        run: |
+          mkdir -p public
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern latest.json \
+            --dir public
+
+      - name: Build download page
+        shell: bash
+        run: |
+          VERSION="${TAG#v}"
+          cat > public/index.html <<HTML
+          <!doctype html>
+          <html lang="ko">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Review Writer 다운로드</title>
+            <style>
+              :root {
+                color-scheme: light;
+                --bg: #f6f8fb;
+                --panel: #ffffff;
+                --text: #132238;
+                --muted: #64748b;
+                --line: #e5eaf0;
+                --primary: #2563eb;
+              }
+              * { box-sizing: border-box; }
+              body {
+                margin: 0;
+                min-height: 100vh;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                background: var(--bg);
+                color: var(--text);
+              }
+              main {
+                max-width: 840px;
+                margin: 0 auto;
+                padding: 72px 24px;
+              }
+              .eyebrow {
+                color: var(--primary);
+                font-weight: 700;
+                font-size: 14px;
+                margin-bottom: 12px;
+              }
+              h1 {
+                font-size: 42px;
+                line-height: 1.12;
+                margin: 0 0 14px;
+                letter-spacing: 0;
+              }
+              p {
+                color: var(--muted);
+                font-size: 16px;
+                line-height: 1.6;
+              }
+              .card {
+                margin-top: 32px;
+                border: 1px solid var(--line);
+                border-radius: 18px;
+                padding: 28px;
+                background: var(--panel);
+              }
+              .version {
+                display: inline-flex;
+                border-radius: 999px;
+                padding: 8px 12px;
+                background: #eef2ff;
+                color: var(--primary);
+                font-weight: 700;
+                font-size: 14px;
+              }
+              .actions {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-top: 24px;
+              }
+              a.button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 44px;
+                padding: 0 18px;
+                border-radius: 10px;
+                text-decoration: none;
+                font-weight: 700;
+                border: 1px solid var(--line);
+                color: var(--text);
+                background: #fff;
+              }
+              a.button.primary {
+                color: white;
+                background: var(--primary);
+                border-color: var(--primary);
+              }
+            </style>
+          </head>
+          <body>
+            <main>
+              <div class="eyebrow">Cafe24 리뷰 자동 등록 도구</div>
+              <h1>Review Writer 다운로드</h1>
+              <p>최신 버전의 Review Writer 실행 파일을 다운로드할 수 있습니다.</p>
+              <section class="card">
+                <span class="version">${TAG}</span>
+                <div class="actions">
+                  <a class="button primary" href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}.exe">Windows 다운로드</a>
+                  <a class="button" href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}_macOS.zip">macOS 다운로드</a>
+                  <a class="button" href="./latest.json">latest.json</a>
+                </div>
+              </section>
+            </main>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

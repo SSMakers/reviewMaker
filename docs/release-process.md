@@ -39,9 +39,10 @@ Semantic Versioning 스타일을 사용합니다.
 8. 개발자가 PR 승인 및 merge
 9. 개발자가 Slack에서 "배포해" 명령
 10. bot이 GitHub Actions release workflow를 workflow_dispatch로 실행
-11. GitHub Actions가 production environment approval 대기
-12. 개발자가 GitHub에서 최종 배포 승인
-13. GitHub Actions가 GitHub Release 생성 및 Pages latest metadata 갱신
+11. GitHub Actions가 draft GitHub Release를 생성
+12. 개발자가 GitHub Release 화면에서 산출물, 버전, 릴리즈 노트를 확인
+13. 개발자가 Publish release를 눌러 최종 배포 승인
+14. Release published 이벤트가 Pages latest metadata와 다운로드 페이지를 갱신
 ```
 
 ## PR에 반드시 포함할 내용
@@ -124,11 +125,12 @@ Pages metadata: latest.json version = 1.0.1
 
 초기 운영은 안전 우선으로 진행합니다.
 
-- Slack의 "배포해" 명령은 release workflow 시작 요청입니다.
-- 실제 배포 공개 전 GitHub production environment approval을 한 번 더 요구합니다.
-- 최종 배포자는 GitHub Actions 화면에서 대상 버전, commit, release notes를 확인하고 승인합니다.
+- Slack의 "배포해" 명령은 draft release 생성 workflow 시작 요청입니다.
+- 실제 배포 공개 전 GitHub Release 화면에서 `Publish release`를 한 번 더 눌러야 합니다.
+- 최종 배포자는 draft release에서 대상 버전, commit, release notes, asset을 확인하고 publish합니다.
+- release가 publish되면 별도 Pages workflow가 `latest.json`과 다운로드 페이지를 갱신합니다.
 
-이중 승인이 번거로워질 경우, 운영 안정화 후 Slack 승인만으로 배포하는 방식으로 완화할 수 있습니다.
+이 방식은 GitHub environment required reviewers를 사용할 수 없을 때도 최종 승인 단계를 유지할 수 있습니다. 운영 안정화 후에는 Slack 승인만으로 release를 바로 publish하는 방식으로 완화할 수 있습니다.
 
 ## 금지 사항
 
@@ -136,4 +138,3 @@ Pages metadata: latest.json version = 1.0.1
 - `main`에 디버그 인증 우회 상태를 남기지 않습니다.
 - PR 없이 coding bot이 바로 `main`에 push하지 않습니다. 긴급 장애는 예외로 하되, 사후 PR 또는 기록을 남깁니다.
 - 릴리즈 asset URL을 직접 하드코딩하지 않습니다. Pages metadata 또는 GitHub Release API를 기준으로 합니다.
-

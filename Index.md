@@ -47,7 +47,8 @@ flowchart TD
 | `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
 | `.github/ISSUE_TEMPLATE/*.md` | GitHub Issue 템플릿 | 버그 리포트와 기능 요청에 필요한 정보를 표준화합니다. |
 | `.github/pull_request_template.md` | GitHub PR 템플릿 | 변경 유형, 버전 bump, 테스트, 릴리즈 노트, 리스크를 PR마다 확인합니다. |
-| `.github/workflows/release.yml` | 수동 배포 workflow | `workflow_dispatch`로 실행되며 GitHub Release, Pages `latest.json`, 다운로드 페이지를 생성합니다. |
+| `.github/workflows/release.yml` | draft release 생성 workflow | `workflow_dispatch`로 실행되며 빌드 산출물과 `latest.json`을 담은 draft GitHub Release를 생성합니다. |
+| `.github/workflows/pages-on-release.yml` | Pages 배포 workflow | draft release가 publish되면 Pages `latest.json`과 다운로드 페이지를 갱신합니다. |
 | `external_api/cafe24_api.py` | Cafe24 OAuth 및 Admin API client | 브라우저 인증, token 발급, 게시글 생성 요청을 담당합니다. |
 | `external_api/server/server_api.py` | 자체 서버 API client | `.env` 기반 서버 URL/CA 인증서를 로드하고 기기 인증 API와 리뷰 이미지 업로드 API를 호출합니다. |
 | `external_api/server/models.py` | 자체 서버 응답 모델 | 인증 성공/실패, 이미지 업로드 응답을 dataclass로 파싱합니다. |
@@ -100,12 +101,12 @@ flowchart TD
 
 ## Release Flow
 
-- 버그 수정과 기능 구현은 같은 PR -> 테스트 -> merge -> Slack 배포 요청 -> GitHub production approval -> release 흐름을 따릅니다.
+- 버그 수정과 기능 구현은 같은 PR -> 테스트 -> merge -> Slack 배포 요청 -> draft release 생성 -> GitHub Release publish 승인 흐름을 따릅니다.
 - 버그 수정은 PATCH, 기능 추가는 MINOR, 호환성 깨지는 변경은 MAJOR를 올립니다.
 - Windows와 macOS는 항상 같은 버전을 배포합니다.
 - 배포 버전의 단일 기준은 `version.py`입니다.
 - PR 본문에는 변경 유형, version bump, 현재/다음 버전, 테스트, 릴리즈 노트, 리스크를 적습니다.
-- Slack의 "배포해"는 GitHub Actions release workflow 실행 요청이며, 실제 공개 전 GitHub에서 production approval을 한 번 더 수행합니다.
+- Slack의 "배포해"는 GitHub Actions release workflow 실행 요청이며, 실제 공개 전 GitHub draft release 화면에서 `Publish release`를 한 번 더 수행합니다.
 - 실행 파일은 GitHub Releases에 올리고, GitHub Pages는 다운로드 페이지와 `latest.json` 같은 최신 버전 metadata를 제공합니다.
 - 상세 운영 규칙은 `docs/release-process.md`를 따릅니다.
 

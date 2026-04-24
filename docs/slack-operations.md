@@ -75,5 +75,4 @@ PR이 merge된 뒤 개발자가 Slack에서 아래처럼 요청합니다.
 비고:
 ```
 
-이 명령은 GitHub Actions release workflow 실행 요청입니다. 실제 사용자 공개 전 GitHub `production` environment approval을 한 번 더 진행합니다.
-
+이 명령은 GitHub Actions release workflow 실행 요청입니다. workflow는 draft GitHub Release를 생성합니다. 실제 사용자 공개 전 GitHub Release 화면에서 산출물과 릴리즈 노트를 확인한 뒤 `Publish release`를 눌러 최종 승인합니다.
