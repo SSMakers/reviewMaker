@@ -56,3 +56,6 @@ Thumbs.db
 
 # Generated PDF preview renders
 docs/assets/generated-guide-page-*.png
+
+# Local Codex runner state
+.codex-runner/
