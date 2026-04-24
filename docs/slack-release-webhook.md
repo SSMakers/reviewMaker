@@ -27,9 +27,9 @@ UPDATE_LATEST_URL=https://ssmakers.github.io/reviewMaker/latest.json
 
 `UPDATE_LATEST_URL`은 공개 값이라 secret일 필요는 없지만, 현재 workflow가 `.env`를 `ENV_FILE` 하나로 만들기 때문에 여기에 함께 넣는 방식이 가장 단순합니다.
 
-## Lambda 환경 변수
+## Cloudflare Worker 설정
 
-`scripts/slack_release_lambda.py`를 AWS Lambda에 올릴 때 필요한 환경 변수입니다.
+현재 권장 방식은 Cloudflare Workers입니다. `scripts/slack_release_worker.mjs` 내용을 Worker 코드에 넣고 배포합니다.
 
 | Name | Required | Example |
 | --- | --- | --- |
@@ -40,13 +40,27 @@ UPDATE_LATEST_URL=https://ssmakers.github.io/reviewMaker/latest.json
 | `GITHUB_RELEASE_REF` | No | `main` |
 | `SLACK_ALLOWED_USER_IDS` | No | `U123,U456` |
 
-GitHub token 권한은 Actions workflow dispatch를 실행할 수 있어야 합니다.
+Cloudflare에는 `env`라는 변수 하나를 만드는 것이 아니라, 위 이름을 각각 Secret 또는 Variable로 등록합니다.
+
+Secret으로 등록:
+
+- `SLACK_SIGNING_SECRET`
+- `GITHUB_TOKEN`
+- `SLACK_ALLOWED_USER_IDS`
+
+Variable로 등록:
+
+- `GITHUB_REPOSITORY`
+- `GITHUB_RELEASE_WORKFLOW`
+- `GITHUB_RELEASE_REF`
+
+GitHub token은 fine-grained personal access token을 사용합니다. repository는 `SSMakers/reviewMaker`만 선택하고, repository permission은 `Actions: Read and write`를 부여합니다. GitHub REST API의 workflow dispatch endpoint는 fine-grained token에 `Actions` write 권한이 필요합니다.
 
 ## Slack App 설정
 
 1. Slack API 페이지에서 앱 생성
 2. `Slash Commands`에서 `/review-release` 생성
-3. Request URL에 Lambda Function URL 입력
+3. Request URL에 Cloudflare Worker URL 입력
 4. 명령 설명에 `Review Writer 배포 workflow 실행` 입력
 5. 앱을 workspace에 설치
 
