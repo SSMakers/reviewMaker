@@ -1,4 +1,4 @@
-# Copilot Coding Agent Instructions
+# Codex Coding Agent Instructions
 
 Before changing code in this repository:
 

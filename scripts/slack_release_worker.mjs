@@ -104,10 +104,7 @@ async function triggerReleaseWorkflow(releaseNotes, env) {
 async function githubGraphql(query, variables, env) {
   const response = await fetch(GITHUB_GRAPHQL_URL, {
     method: "POST",
-    headers: {
-      ...githubHeaders(env),
-      "GraphQL-Features": "issues_copilot_assignment_api_support,coding_agent_model_selection",
-    },
+    headers: githubHeaders(env),
     body: JSON.stringify({ query, variables }),
   });
   const data = await response.json();
@@ -157,18 +154,6 @@ async function getRepositoryContext(env) {
     query RepositoryContext($owner: String!, $name: String!) {
       repository(owner: $owner, name: $name) {
         id
-        suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
-          nodes {
-            login
-            __typename
-            ... on Bot {
-              id
-            }
-            ... on User {
-              id
-            }
-          }
-        }
       }
     }
   `;
@@ -177,8 +162,7 @@ async function getRepositoryContext(env) {
   if (!repository) {
     throw new Error("Repository not found");
   }
-  const copilot = (repository.suggestedActors.nodes || []).find((actor) => actor.login === "copilot-swe-agent");
-  return { repositoryId: repository.id, copilotId: copilot?.id || null };
+  return { repositoryId: repository.id };
 }
 
 async function createIssueOnly(repositoryId, title, body, env) {
@@ -196,76 +180,14 @@ async function createIssueOnly(repositoryId, title, body, env) {
   return data.createIssue.issue;
 }
 
-async function createCopilotIssue(repositoryId, copilotId, title, body, text, env) {
-  const mutation = `
-    mutation CreateCopilotIssue(
-      $repositoryId: ID!,
-      $copilotId: ID!,
-      $title: String!,
-      $body: String!,
-      $baseRef: String!,
-      $instructions: String!
-    ) {
-      createIssue(input: {
-        repositoryId: $repositoryId,
-        title: $title,
-        body: $body,
-        assigneeIds: [$copilotId],
-        agentAssignment: {
-          targetRepositoryId: $repositoryId,
-          baseRef: $baseRef,
-          customInstructions: $instructions
-        }
-      }) {
-        issue {
-          number
-          url
-          assignees(first: 10) {
-            nodes {
-              login
-            }
-          }
-        }
-      }
-    }
-  `;
-  const instructions = [
-    "Review Writer repository maintenance task.",
-    "Read Index.md first, then inspect only relevant files.",
-    "Follow docs/release-process.md for version bump and PR body.",
-    `User request: ${text}`,
-  ].join("\n");
-  const data = await githubGraphql(
-    mutation,
-    {
-      repositoryId,
-      copilotId,
-      title,
-      body,
-      baseRef: env.GITHUB_TASK_BASE_REF || "main",
-      instructions,
-    },
-    env,
-  );
-  return data.createIssue.issue;
-}
-
 async function createCodingTask(text, userName, env) {
   if (!text) {
     throw new Error("작업 요청 내용이 비어 있습니다.");
   }
-  const { repositoryId, copilotId } = await getRepositoryContext(env);
+  const { repositoryId } = await getRepositoryContext(env);
   const title = buildTaskTitle(text);
   const body = buildTaskBody(text, userName);
-  const shouldAssignCopilot = env.COPILOT_ASSIGNMENT_ENABLED !== "false" && Boolean(copilotId);
-
-  if (!shouldAssignCopilot) {
-    const issue = await createIssueOnly(repositoryId, title, body, env);
-    return { issue, assignedToCopilot: false };
-  }
-
-  const issue = await createCopilotIssue(repositoryId, copilotId, title, body, text, env);
-  return { issue, assignedToCopilot: true };
+  return createIssueOnly(repositoryId, title, body, env);
 }
 
 function isTaskCommand(command, text) {
@@ -297,11 +219,8 @@ export default {
 
       if (isTaskCommand(command, text)) {
         const taskText = command.endsWith("/review-task") ? text : text.replace(/^(작업|수정)\s+/, "");
-        const result = await createCodingTask(taskText, userName, env);
-        const assignmentText = result.assignedToCopilot
-          ? "Copilot coding agent에 배정했습니다."
-          : "Copilot 배정은 건너뛰고 Issue만 생성했습니다.";
-        return textResponse(`작업 Issue를 생성했습니다. ${assignmentText}\n${result.issue.url}`);
+        const issue = await createCodingTask(taskText, userName, env);
+        return textResponse(`Codex 작업 대기 Issue를 생성했습니다.\n${issue.url}\n\n다음 단계: Codex에게 "Issue #${issue.number} 처리해줘"라고 요청하세요.`);
       }
 
       if (isReleaseCommand(command, text)) {
