@@ -39,6 +39,9 @@ flowchart TD
 | `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, `image_url` 매핑을 관리합니다. |
 | `image_mapping.py` | 리뷰 이미지 출처 결정 | 엑셀 URL, 이미지 파일명, 선택된 이미지 폴더를 기준으로 기존 URL 사용 또는 업로드 대상을 결정합니다. |
 | `review_preflight.py` | 등록 전 사전 검사 | 전체 행, 등록 가능 행, URL 이미지, 업로드 필요 이미지, 경고 수를 계산합니다. |
+| `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. |
+| `docs/Review Writer 스크린샷 사용자 가이드.pdf` | 고객 전달용 시각 가이드 | 실제 앱 화면 캡처를 중심으로 사용 흐름을 설명하는 PDF입니다. |
+| `docs/assets/guide-*.png` | 가이드용 앱 화면 캡처 | PDF 사용자 가이드에 삽입되는 실제 화면 이미지입니다. |
 | `external_api/cafe24_api.py` | Cafe24 OAuth 및 Admin API client | 브라우저 인증, token 발급, 게시글 생성 요청을 담당합니다. |
 | `external_api/server/server_api.py` | 자체 서버 API client | `.env` 기반 서버 URL/CA 인증서를 로드하고 기기 인증 API와 리뷰 이미지 업로드 API를 호출합니다. |
 | `external_api/server/models.py` | 자체 서버 응답 모델 | 인증 성공/실패, 이미지 업로드 응답을 dataclass로 파싱합니다. |
@@ -93,6 +96,7 @@ flowchart TD
 
 - 2026-04-24: `ApiWorker.run()`에서 엑셀 행 변환 책임을 `review_article_builder.py`로 분리했습니다. 이후 이미지 업로드 요구사항은 이 builder 앞단 또는 별도 image service를 통해 URL을 보강하는 방식으로 확장하는 것이 자연스럽습니다.
 - 2026-04-24: 서버가 `/review-images` API를 제공한다는 전제로 이미지 폴더 선택, `이미지파일명` 매칭, 사전 검사, multipart 업로드 client를 미리 구현했습니다.
+- 2026-04-24: `IS_DEBUG=True`일 때 서버 인증을 우회하더라도 `VerifyConfirm` 형태의 디버그 인증 정보를 만들어 `MainPage`에 전달하도록 수정했습니다.
 - 추가 정리 후보: `internal_api/internal_api.py`는 현재 주요 흐름에서 쓰이지 않는 placeholder입니다. 실제 사용처가 없으면 제거하거나 legacy로 명시하는 것이 좋습니다.
 
 ## Feature Notes
@@ -113,3 +117,10 @@ flowchart TD
 - `API_TIMEOUT_SEC`: 일반 JSON API timeout, 기본 10초
 - `API_UPLOAD_TIMEOUT_SEC`: 이미지 업로드 timeout, 기본 60초
 - `API_CA_CERT_PATH`: 서버 TLS CA 인증서 경로
+
+디버그 모드에서 Cafe24 인증/업로드까지 테스트할 때 필요한 환경 변수:
+
+- `CAFE24_CLIENT_ID`: Cafe24 앱 client id
+- `CAFE24_CLIENT_SECRET`: Cafe24 앱 secret
+- `CAFE24_MALL_ID` 또는 `DEBUG_MALL_ID`: Cafe24 mall id
+- `CAFE24_REDIRECT_URL`: 선택 사항. 없으면 `https://{mall_id}.cafe24.com/order/basket.html`을 사용합니다.

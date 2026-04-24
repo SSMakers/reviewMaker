@@ -53,3 +53,6 @@ Thumbs.db
 *.spec
 
 .env
+
+# Generated PDF preview renders
+docs/assets/generated-guide-page-*.png

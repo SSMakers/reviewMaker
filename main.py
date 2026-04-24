@@ -31,7 +31,8 @@ class AppController(QMainWindow):
 
     def go_to_main(self, auth_result):
         """로그인 성공 시 호출되어 메인 화면으로 전환함"""
-        logger.info(f"메인 화면으로 전환합니다. (인증 정보 수신됨: {auth_result})")
+        auth_type = type(auth_result).__name__ if auth_result is not None else "None"
+        logger.info(f"메인 화면으로 전환합니다. (인증 정보 타입: {auth_type})")
 
         if hasattr(self.main_page, 'set_auth_info'):
             self.main_page.set_auth_info(auth_result)

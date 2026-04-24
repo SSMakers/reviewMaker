@@ -1,8 +1,10 @@
+import os
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame
 
 import version
-from external_api.server.models import VerifyDenied
+from external_api.server.models import VerifyConfirm, VerifyDenied
 from external_api.server.server_api import ServerApi
 from global_constants import IS_DEBUG
 from logger.file_logger import logger
@@ -22,7 +24,9 @@ class LoginPage(QWidget):
         self.on_login_success = on_login_success  # 성공 시 다음 페이지 이동 콜백
         self.init_ui()
 
-        if not IS_DEBUG:
+        if IS_DEBUG:
+            self.configure_debug_auth()
+        else:
             self.check_initial_uuid()
 
     def init_ui(self):
@@ -151,6 +155,46 @@ class LoginPage(QWidget):
             self.set_auth_status(False, "UUID를 찾을 수 없습니다. 수동 인증이 필요합니다.")
             logger.warning(f"UUID를 찾을 수 없습니다. 수동 인증이 필요합니다.")
 
+    def configure_debug_auth(self):
+        self.uuid = get_system_uuid() or "debug-device"
+        client_id = os.getenv("CAFE24_CLIENT_ID", "").strip()
+        client_secret = os.getenv("CAFE24_CLIENT_SECRET", "").strip()
+        mall_id = (
+            os.getenv("CAFE24_MALL_ID", "").strip()
+            or os.getenv("DEBUG_MALL_ID", "").strip()
+        )
+        redirect_url = (
+            os.getenv("CAFE24_REDIRECT_URL", "").strip()
+            or (f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else "")
+        )
+
+        missing = []
+        if not client_id:
+            missing.append("CAFE24_CLIENT_ID")
+        if not client_secret:
+            missing.append("CAFE24_CLIENT_SECRET")
+        if not mall_id:
+            missing.append("CAFE24_MALL_ID 또는 DEBUG_MALL_ID")
+
+        self.auth_result = VerifyConfirm(
+            result="confirm",
+            contract_id="debug-contract",
+            remaining_days=9999,
+            client_id=client_id,
+            secret_key=client_secret,
+            mall_id=mall_id,
+            redirect_url=redirect_url,
+        )
+
+        if missing:
+            message = f"디버그 인증 사용 중, 설정 누락: {', '.join(missing)}"
+            logger.warning(message)
+            self.set_auth_status(True, message)
+        else:
+            self.set_auth_status(True, f"디버그 인증 사용 중 (ID: {self.uuid[:8]}...)")
+
+        logger.info(f"디버그 인증 구성 완료 (ID: {self.uuid}, mall_id={mall_id})")
+
     # def open_manual_input(self):
     #     dialog = UUIDInputDialog(self)
     #     if dialog.exec() == UUIDInputDialog.DialogCode.Accepted:
@@ -172,5 +216,9 @@ class LoginPage(QWidget):
     #             QMessageBox.warning(self, "경고", "UUID를 입력해야 합니다.")
 
     def __handle_login(self):
+        if self.auth_result is None:
+            self.set_auth_status(False, "인증 정보가 준비되지 않았습니다. 설정을 확인해주세요.")
+            return
+
         logger.info(f"{self.uuid} 인증 완료. 메인 화면으로 진입합니다.")
         self.on_login_success(self.auth_result)

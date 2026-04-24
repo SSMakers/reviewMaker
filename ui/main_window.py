@@ -72,6 +72,11 @@ class MainPage(QWidget):
 
     def set_auth_info(self, auth_result):
         """로그인 페이지로부터 인증 정보를 전달받아 설정합니다."""
+        if auth_result is None:
+            logger.error("인증 정보가 비어있어 API 설정을 건너뜁니다.")
+            self.append_log("❌ 인증 정보가 비어있습니다. 로그인 설정을 확인해주세요.")
+            return
+
         self.auth_result = auth_result
         self.client_id = auth_result.client_id
         self.client_secret = auth_result.secret_key
@@ -209,7 +214,7 @@ class MainPage(QWidget):
         self.log_viewer.setMinimumHeight(250)
 
         # 폰트를 고정폭 폰트로 설정 (로그 보기 편함)
-        self.log_viewer.setStyleSheet("font-family: 'Consolas', 'Monaco', monospace; font-size: 12px;")
+        self.log_viewer.setStyleSheet("font-family: 'Menlo', 'Monaco'; font-size: 12px;")
 
         main_layout.addWidget(self.log_viewer)
 
