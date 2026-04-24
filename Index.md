@@ -47,6 +47,7 @@ flowchart TD
 | `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
 | `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
 | `docs/slack-release-webhook.md` | Slack 작업/배포 명령 연동 문서 | `/review-task` Codex 작업 대기 Issue 생성, `/review-release 배포해` workflow 실행 설정을 설명합니다. |
+| `docs/local-codex-runner.md` | 로컬 Codex runner 운영 설계 | PC가 켜져 있을 때 GitHub Issue를 감지해 Codex CLI로 작업/PR을 자동화하는 구조와 테스트 절차를 설명합니다. |
 | `scripts/slack_release_worker.mjs` | Cloudflare Worker Slack webhook | `/review-task`는 GitHub Issue를 생성하고, `/review-release`는 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `scripts/slack_release_lambda.py` | Slack Slash Command Lambda 예시 | Slack signature를 검증하고 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `.github/codex-instructions.md` | Codex coding agent 지침 | 작업 전 `Index.md`와 release process를 읽고 PR 본문/버전 bump 규칙을 따르도록 안내합니다. |

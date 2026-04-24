@@ -1,5 +1,5 @@
 const GITHUB_API_URL = "https://api.github.com";
-const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
+const CODEX_TASK_LABEL = "codex-task";
 
 function textResponse(text, status = 200) {
   return new Response(text, {
@@ -101,19 +101,6 @@ async function triggerReleaseWorkflow(releaseNotes, env) {
   }
 }
 
-async function githubGraphql(query, variables, env) {
-  const response = await fetch(GITHUB_GRAPHQL_URL, {
-    method: "POST",
-    headers: githubHeaders(env),
-    body: JSON.stringify({ query, variables }),
-  });
-  const data = await response.json();
-  if (!response.ok || data.errors) {
-    throw new Error(`GitHub GraphQL failed: ${response.status} ${JSON.stringify(data.errors || data)}`);
-  }
-  return data.data;
-}
-
 function repoParts(env) {
   const [owner, name] = env.GITHUB_REPOSITORY.split("/");
   if (!owner || !name) {
@@ -148,46 +135,60 @@ function buildTaskBody(text, userName) {
   ].join("\n");
 }
 
-async function getRepositoryContext(env) {
+async function ensureCodexTaskLabel(env) {
   const { owner, name } = repoParts(env);
-  const query = `
-    query RepositoryContext($owner: String!, $name: String!) {
-      repository(owner: $owner, name: $name) {
-        id
-      }
-    }
-  `;
-  const data = await githubGraphql(query, { owner, name }, env);
-  const repository = data.repository;
-  if (!repository) {
-    throw new Error("Repository not found");
+  const url = `${GITHUB_API_URL}/repos/${owner}/${name}/labels/${encodeURIComponent(CODEX_TASK_LABEL)}`;
+  const existing = await fetch(url, { headers: githubHeaders(env) });
+  if (existing.status === 200) {
+    return;
   }
-  return { repositoryId: repository.id };
+  if (existing.status !== 404) {
+    const details = await existing.text();
+    throw new Error(`GitHub label lookup failed: ${existing.status} ${details}`);
+  }
+
+  const create = await fetch(`${GITHUB_API_URL}/repos/${owner}/${name}/labels`, {
+    method: "POST",
+    headers: githubHeaders(env),
+    body: JSON.stringify({
+      name: CODEX_TASK_LABEL,
+      color: "2563eb",
+      description: "Local Codex runner task queue",
+    }),
+  });
+  if (![200, 201].includes(create.status)) {
+    const details = await create.text();
+    throw new Error(`GitHub label create failed: ${create.status} ${details}`);
+  }
 }
 
-async function createIssueOnly(repositoryId, title, body, env) {
-  const mutation = `
-    mutation CreateIssue($repositoryId: ID!, $title: String!, $body: String!) {
-      createIssue(input: { repositoryId: $repositoryId, title: $title, body: $body }) {
-        issue {
-          number
-          url
-        }
-      }
-    }
-  `;
-  const data = await githubGraphql(mutation, { repositoryId, title, body }, env);
-  return data.createIssue.issue;
+async function createTaskIssue(title, body, env) {
+  await ensureCodexTaskLabel(env);
+
+  const { owner, name } = repoParts(env);
+  const response = await fetch(`${GITHUB_API_URL}/repos/${owner}/${name}/issues`, {
+    method: "POST",
+    headers: githubHeaders(env),
+    body: JSON.stringify({
+      title,
+      body,
+      labels: [CODEX_TASK_LABEL],
+    }),
+  });
+  const data = await response.json();
+  if (![200, 201].includes(response.status)) {
+    throw new Error(`GitHub issue create failed: ${response.status} ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 async function createCodingTask(text, userName, env) {
   if (!text) {
     throw new Error("작업 요청 내용이 비어 있습니다.");
   }
-  const { repositoryId } = await getRepositoryContext(env);
   const title = buildTaskTitle(text);
   const body = buildTaskBody(text, userName);
-  return createIssueOnly(repositoryId, title, body, env);
+  return createTaskIssue(title, body, env);
 }
 
 function isTaskCommand(command, text) {
