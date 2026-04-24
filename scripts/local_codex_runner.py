@@ -171,11 +171,17 @@ def git_status_lines(workdir: Path) -> list[str]:
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
+def is_allowed_untracked_path(path_text: str, allowed_untracked: set[str]) -> bool:
+    normalized = Path(path_text).as_posix()
+    basename = Path(path_text).name
+    return normalized in allowed_untracked or basename in allowed_untracked
+
+
 def assert_clean_worktree(workdir: Path, allowed_untracked: set[str]):
     unsafe = []
     for line in git_status_lines(workdir):
         path = line[3:].strip()
-        if line.startswith("?? ") and path in allowed_untracked:
+        if line.startswith("?? ") and is_allowed_untracked_path(path, allowed_untracked):
             continue
         if path.startswith(f"{STATE_DIR}/"):
             continue
@@ -188,7 +194,7 @@ def changed_paths_for_commit(workdir: Path, allowed_untracked: set[str]) -> list
     paths = []
     for line in git_status_lines(workdir):
         path = line[3:].strip()
-        if line.startswith("?? ") and path in allowed_untracked:
+        if line.startswith("?? ") and is_allowed_untracked_path(path, allowed_untracked):
             continue
         if path.startswith(f"{STATE_DIR}/"):
             continue
