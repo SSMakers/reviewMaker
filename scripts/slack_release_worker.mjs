@@ -221,7 +221,8 @@ export default {
       if (isTaskCommand(command, text)) {
         const taskText = command.endsWith("/review-task") ? text : text.replace(/^(작업|수정)\s+/, "");
         const issue = await createCodingTask(taskText, userName, env);
-        return textResponse(`Codex 작업 대기 Issue를 생성했습니다.\n${issue.url}\n\n다음 단계: Codex에게 "Issue #${issue.number} 처리해줘"라고 요청하세요.`);
+        const issueUrl = issue.html_url || `https://github.com/${env.GITHUB_REPOSITORY}/issues/${issue.number}`;
+        return textResponse(`Codex 작업 대기 Issue를 생성했습니다.\n${issueUrl}\n\n다음 단계: Codex에게 "Issue #${issue.number} 처리해줘"라고 요청하세요.`);
       }
 
       if (isReleaseCommand(command, text)) {
