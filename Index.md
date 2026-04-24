@@ -8,6 +8,7 @@
 - 책임 경계가 바뀌면 `Module Map`, `Core Flow`, `Change Guide`를 갱신합니다.
 - 새 요구사항이 특정 파일에 영향을 준다면 `Feature Notes`에 의사결정과 후속 작업을 남깁니다.
 - UI 문구, 엑셀 컬럼명, 외부 API payload 필드처럼 사용자/서버 계약이 되는 값은 이 문서에서 추적합니다.
+- 배포 가능한 코드 변경은 `version.py` 버전 bump와 `docs/release-process.md` 규칙을 확인합니다.
 
 ## Product Summary
 
@@ -42,6 +43,7 @@ flowchart TD
 | `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. |
 | `docs/Review Writer 스크린샷 사용자 가이드.pdf` | 고객 전달용 시각 가이드 | 실제 앱 화면 캡처를 중심으로 사용 흐름을 설명하는 PDF입니다. |
 | `docs/assets/guide-*.png` | 가이드용 앱 화면 캡처 | PDF 사용자 가이드에 삽입되는 실제 화면 이미지입니다. |
+| `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
 | `external_api/cafe24_api.py` | Cafe24 OAuth 및 Admin API client | 브라우저 인증, token 발급, 게시글 생성 요청을 담당합니다. |
 | `external_api/server/server_api.py` | 자체 서버 API client | `.env` 기반 서버 URL/CA 인증서를 로드하고 기기 인증 API와 리뷰 이미지 업로드 API를 호출합니다. |
 | `external_api/server/models.py` | 자체 서버 응답 모델 | 인증 성공/실패, 이미지 업로드 응답을 dataclass로 파싱합니다. |
@@ -91,6 +93,17 @@ flowchart TD
 - UI 입력/버튼/작업 단계 변경: `ui/main_window.py`에서 사용자 흐름을 수정하고, 비즈니스 로직은 별도 모듈에 둡니다.
 - 인증/라이선스 정책 변경: `ui/login_window.py`, `external_api/server/server_api.py`, `external_api/server/models.py`를 확인합니다.
 - 장시간 작업/네트워크 작업 변경: UI freeze 방지를 위해 `QThread` worker에 유지합니다.
+
+## Release Flow
+
+- 버그 수정과 기능 구현은 같은 PR -> 테스트 -> merge -> Slack 배포 요청 -> GitHub production approval -> release 흐름을 따릅니다.
+- 버그 수정은 PATCH, 기능 추가는 MINOR, 호환성 깨지는 변경은 MAJOR를 올립니다.
+- Windows와 macOS는 항상 같은 버전을 배포합니다.
+- 배포 버전의 단일 기준은 `version.py`입니다.
+- PR 본문에는 변경 유형, version bump, 현재/다음 버전, 테스트, 릴리즈 노트, 리스크를 적습니다.
+- Slack의 "배포해"는 GitHub Actions release workflow 실행 요청이며, 실제 공개 전 GitHub에서 production approval을 한 번 더 수행합니다.
+- 실행 파일은 GitHub Releases에 올리고, GitHub Pages는 다운로드 페이지와 `latest.json` 같은 최신 버전 metadata를 제공합니다.
+- 상세 운영 규칙은 `docs/release-process.md`를 따릅니다.
 
 ## Refactoring Notes
 
