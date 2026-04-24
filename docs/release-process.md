@@ -30,24 +30,25 @@ Semantic Versioning 스타일을 사용합니다.
 
 ```text
 1. 사용자 또는 개발자가 버그/기능 요청을 전달
-2. 개발자가 Slack에서 coding bot에게 작업 요청
-3. coding bot이 작업 브랜치 생성
-4. coding bot이 코드 수정, 테스트, 버전 bump 수행
-5. coding bot이 PR 생성
-6. coding bot이 Slack으로 PR 링크와 요약 알림
-7. 개발자가 PR artifact 또는 로컬 빌드로 테스트
-8. 개발자가 PR 승인 및 merge
-9. 개발자가 Slack에서 "배포해" 명령
-10. bot이 GitHub Actions release workflow를 workflow_dispatch로 실행
-11. GitHub Actions가 draft GitHub Release를 생성
-12. 개발자가 GitHub Release 화면에서 산출물, 버전, 릴리즈 노트를 확인
-13. 개발자가 Publish release를 눌러 최종 배포 승인
-14. Release published 이벤트가 Pages latest metadata와 다운로드 페이지를 갱신
+2. 개발자가 Slack에서 `/review-task ...`로 coding agent 작업 요청
+3. Cloudflare Worker가 GitHub Issue를 생성하고 가능하면 Copilot coding agent에 배정
+4. coding agent가 작업 브랜치 생성
+5. coding agent가 코드 수정, 테스트, 버전 bump 수행
+6. coding agent가 PR 생성
+7. GitHub Slack 앱이 PR 링크와 요약 알림을 채널에 전달
+8. 개발자가 PR artifact 또는 로컬 빌드로 테스트
+9. 개발자가 PR 승인 및 merge
+10. 개발자가 Slack에서 `/review-release 배포해` 명령
+11. Cloudflare Worker가 GitHub Actions release workflow를 workflow_dispatch로 실행
+12. GitHub Actions가 draft GitHub Release를 생성
+13. 개발자가 GitHub Release 화면에서 산출물, 버전, 릴리즈 노트를 확인
+14. 개발자가 Publish release를 눌러 최종 배포 승인
+15. Release published 이벤트가 Pages latest metadata와 다운로드 페이지를 갱신
 ```
 
 ## PR에 반드시 포함할 내용
 
-coding bot은 PR 본문에 아래 내용을 포함해야 합니다.
+coding agent는 PR 본문에 아래 내용을 포함해야 합니다.
 
 ```text
 Change type: bugfix | feature | breaking | docs | internal

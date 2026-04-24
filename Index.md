@@ -46,9 +46,10 @@ flowchart TD
 | `docs/assets/guide-*.png` | 가이드용 앱 화면 캡처 | PDF 사용자 가이드에 삽입되는 실제 화면 이미지입니다. |
 | `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
 | `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
-| `docs/slack-release-webhook.md` | Slack 배포 명령 연동 문서 | `/review-release 배포해`로 release workflow를 실행하는 Lambda/Webhook 설정을 설명합니다. |
-| `scripts/slack_release_worker.mjs` | Cloudflare Worker 배포 webhook | Slack Slash Command를 검증하고 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
+| `docs/slack-release-webhook.md` | Slack 작업/배포 명령 연동 문서 | `/review-task` 작업 Issue 생성, Copilot assignment, `/review-release 배포해` workflow 실행 설정을 설명합니다. |
+| `scripts/slack_release_worker.mjs` | Cloudflare Worker Slack webhook | `/review-task`는 GitHub Issue/Copilot assignment를 생성하고, `/review-release`는 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `scripts/slack_release_lambda.py` | Slack Slash Command Lambda 예시 | Slack signature를 검증하고 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
+| `.github/copilot-instructions.md` | Copilot coding agent 지침 | 작업 전 `Index.md`와 release process를 읽고 PR 본문/버전 bump 규칙을 따르도록 안내합니다. |
 | `.github/ISSUE_TEMPLATE/*.md` | GitHub Issue 템플릿 | 버그 리포트와 기능 요청에 필요한 정보를 표준화합니다. |
 | `.github/pull_request_template.md` | GitHub PR 템플릿 | 변경 유형, 버전 bump, 테스트, 릴리즈 노트, 리스크를 PR마다 확인합니다. |
 | `.github/workflows/release.yml` | draft release 생성 workflow | `workflow_dispatch`로 실행되며 빌드 산출물과 `latest.json`을 담은 draft GitHub Release를 생성합니다. |
