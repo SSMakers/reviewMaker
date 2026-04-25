@@ -1,5 +1,6 @@
 import time
 import uuid
+import os
 
 import pandas as pd
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -13,6 +14,7 @@ from review_preflight import analyze_reviews
 
 BATCH_SIZE = 10
 BATCH_DELAY_SEC = 0.5
+AUTO_CLEANUP_UPLOADED_IMAGES = os.getenv("REVIEW_IMAGE_CLEANUP_AFTER_RUN", "").strip().lower() in {"1", "true", "yes"}
 
 
 class ApiWorker(QThread):
@@ -211,5 +213,6 @@ class ApiWorker(QThread):
             logger.exception("ApiWorker fatal error")
             self.log_signal.emit("🔥 작업 중 오류가 발생했습니다. 자세한 내용은 로그 파일을 확인해주세요.")
         finally:
-            self._cleanup_uploaded_images()
+            if AUTO_CLEANUP_UPLOADED_IMAGES:
+                self._cleanup_uploaded_images()
             self.finished_signal.emit(success)
