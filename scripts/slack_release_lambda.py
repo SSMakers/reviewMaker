@@ -130,7 +130,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if text not in {"배포해", "deploy", "release"} and not text.startswith("배포해 "):
             return _response(
                 200,
-                "사용법: /review-release 배포해 또는 /review-release 배포해 이번 수정 내용",
+                "사용법: /review-writer-release 배포해 또는 /review-writer-release 배포해 이번 수정 내용",
             )
 
         _trigger_release_workflow(_build_release_notes(text, user_name))

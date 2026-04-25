@@ -266,7 +266,7 @@ def page_release_ops() -> Image.Image:
     header(draw, "07 / Release", "GitHub Pages 퍼블리싱과 배포 테스트", "실행 파일은 GitHub Releases에 두고, GitHub Pages는 다운로드 페이지와 latest.json만 제공합니다.")
     rows = [
         ("1", "PR merge", "수정 PR을 main에 merge합니다."),
-        ("2", "Slack 배포 명령", "`/review-release 배포해 ...`로 release workflow를 실행합니다."),
+        ("2", "Slack 배포 명령", "`/review-writer-release 배포해 ...`로 release workflow를 실행합니다."),
         ("3", "Draft Release 확인", "버전, 릴리즈 노트, Windows/macOS asset, latest.json을 확인합니다."),
         ("4", "Publish release", "GitHub Release 화면에서 Publish release를 눌러 최종 공개합니다."),
         ("5", "Pages 확인", "GitHub Pages의 index.html과 latest.json이 갱신됐는지 확인합니다."),

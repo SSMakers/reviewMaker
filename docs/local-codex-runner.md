@@ -284,7 +284,7 @@ Middle separator:
 Use a human reviewer icon with a green check mark.
 
 Bottom row: Release flow, 6 numbered steps
-9. "Slack /review-release 배포해"
+9. "Slack /review-writer-release 배포해"
    small text: "배포 요청 입력"
    icon: Slack command
 10. "Release Workflow 실행"

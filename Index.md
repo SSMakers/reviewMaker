@@ -54,9 +54,9 @@ flowchart TD
 | `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
 | `docs/github-pages-publishing-test-guide.md` | Pages 배포/업데이트 테스트 가이드 | Release publish 후 Pages `index.html`, `latest.json`, 앱 자동 업데이트를 검증하는 단계별 절차입니다. |
 | `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
-| `docs/slack-release-webhook.md` | Slack 작업/배포 명령 연동 문서 | `/review-task` Codex 작업 대기 Issue 생성, `/review-release 배포해` workflow 실행 설정을 설명합니다. |
+| `docs/slack-release-webhook.md` | Slack 작업/배포 명령 연동 문서 | `/review-task` Codex 작업 대기 Issue 생성, `/review-writer-release 배포해` workflow 실행 설정을 설명합니다. |
 | `docs/local-codex-runner.md` | 로컬 Codex runner 운영 설계 | PC가 켜져 있을 때 GitHub Issue를 감지해 Codex CLI로 작업/PR을 자동화하는 구조와 테스트 절차를 설명합니다. |
-| `scripts/slack_release_worker.mjs` | Cloudflare Worker Slack webhook | `/review-task`는 GitHub Issue를 생성하고, `/review-release`는 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
+| `scripts/slack_release_worker.mjs` | Cloudflare Worker Slack webhook | `/review-task`는 GitHub Issue를 생성하고, `/review-writer-release`는 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `scripts/local_codex_runner.py` | 로컬 Codex runner | `codex-task` Issue를 감지해 branch 생성, `codex exec`, 테스트, commit/push, PR 생성을 자동화합니다. |
 | `scripts/build_user_guide_assets.py` | 사용자 가이드 asset 생성 | 샘플 엑셀, 엑셀 작성 주석 이미지, 로컬 이미지 업로드 안내 이미지를 생성합니다. |
 | `scripts/build_integrated_user_guide.py` | 통합 사용자 가이드 생성 | Apple SD Gothic Neo 기반 고해상도 페이지 이미지와 통합 PDF를 생성합니다. |

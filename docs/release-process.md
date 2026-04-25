@@ -39,7 +39,7 @@ Semantic Versioning 스타일을 사용합니다.
 8. GitHub Slack 앱이 PR 링크와 요약 알림을 채널에 전달
 9. 개발자가 PR artifact 또는 로컬 빌드로 테스트
 10. 개발자가 PR 승인 및 merge
-11. 개발자가 Slack에서 `/review-release 배포해` 명령
+11. 개발자가 Slack에서 `/review-writer-release 배포해` 명령
 12. Cloudflare Worker가 GitHub Actions release workflow를 workflow_dispatch로 실행
 13. GitHub Actions가 draft GitHub Release를 생성
 14. 개발자가 GitHub Release 화면에서 산출물, 버전, 릴리즈 노트를 확인
@@ -129,7 +129,7 @@ Pages metadata: latest.json version = 1.0.1
 
 초기 운영은 안전 우선으로 진행합니다.
 
-- Slack의 `/review-release 배포해` 명령은 draft release 생성 workflow 시작 요청입니다.
+- Slack의 `/review-writer-release 배포해` 명령은 draft release 생성 workflow 시작 요청입니다.
 - 실제 배포 공개 전 GitHub Release 화면에서 `Publish release`를 한 번 더 눌러야 합니다.
 - 최종 배포자는 draft release에서 대상 버전, commit, release notes, asset을 확인하고 publish합니다.
 - release가 publish되면 별도 Pages workflow가 `latest.json`과 다운로드 페이지를 갱신합니다.

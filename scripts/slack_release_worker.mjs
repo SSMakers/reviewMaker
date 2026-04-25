@@ -213,7 +213,10 @@ function isTaskCommand(command, text) {
 }
 
 function isReleaseCommand(command, text) {
-  if (!command.endsWith("/review-release")) {
+  const isReleaseSlashCommand = command.endsWith("/review-writer-release")
+    || command.endsWith("/review-release");
+
+  if (!isReleaseSlashCommand) {
     return false;
   }
 
@@ -277,7 +280,7 @@ export default {
       return slackResponse([
         "사용법:",
         "/review-task README에 테스트용 주석 한 줄 추가",
-        "/review-release 배포해",
+        "/review-writer-release 배포해",
       ].join("\n"));
     } catch (error) {
       return slackResponse(`요청 처리 실패: ${error.message}`, { status: 500 });

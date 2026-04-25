@@ -20,7 +20,7 @@
 Slack에서 아래 명령을 실행합니다.
 
 ```text
-/review-release 배포해 변경 요약 입력
+/review-writer-release 배포해 변경 요약 입력
 ```
 
 이 명령은 GitHub Actions의 `release.yml` workflow를 실행합니다.
