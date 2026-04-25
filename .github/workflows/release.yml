@@ -37,7 +37,7 @@ jobs:
           text = Path("version.py").read_text(encoding="utf-8")
           values = {}
           for name in ("MAJOR", "MINOR", "PATCH"):
-              match = re.search(rf"{name}\\s*=\\s*(\\d+)", text)
+              match = re.search(rf"{name}\s*=\s*(\d+)", text)
               if not match:
                   raise SystemExit(f"Missing Version.{name}")
               values[name.lower()] = match.group(1)
