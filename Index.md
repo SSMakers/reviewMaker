@@ -80,7 +80,7 @@ flowchart TD
 | `리뷰내용` | Conditional | `content` | 제목도 본문도 비어 있으면 해당 행을 건너뜁니다. |
 | `별점` | No | `rating` | 값이 있으면 정수 변환 후 전송합니다. |
 | `날짜` | No | `created_date` | 값이 있으면 그대로 전송합니다. |
-| `하이퍼링크` | No | `image_url` | 공개 이미지 URL입니다. 기본 이미지 매칭 방식에서는 이 값이 있으면 우선 사용합니다. |
+| `하이퍼링크` | No | `attach_file_urls[].url` | 공개 이미지 URL입니다. 기본 이미지 매칭 방식에서는 이 값이 있으면 우선 사용하고, Cafe24 게시글 첨부 파일 URL로 전송합니다. |
 | `이미지파일명` | No | upload source | 선택한 이미지 폴더 안의 파일명입니다. `하이퍼링크`가 없으면 서버에 업로드해 URL을 생성합니다. |
 
 ### Cafe24 Article Payload
@@ -97,7 +97,7 @@ flowchart TD
 }
 ```
 
-선택 필드: `rating`, `created_date`, `image_url`.
+선택 필드: `rating`, `created_date`, `attach_file_urls`.
 
 ## Change Guide
 
@@ -131,7 +131,7 @@ flowchart TD
 
 ### 사용자 이미지 업로드 -> 자동 URL 생성
 
-현재 앱은 엑셀 `하이퍼링크` URL과 로컬 이미지 폴더 + `이미지파일명` 컬럼을 모두 지원합니다. 로컬 이미지가 필요한 행은 서버 `/review-images`에 업로드하고, 반환된 URL을 Cafe24 `image_url`로 보냅니다.
+현재 앱은 엑셀 `하이퍼링크` URL과 로컬 이미지 폴더 + `이미지파일명` 컬럼을 모두 지원합니다. 로컬 이미지가 필요한 행은 서버 `/review-images`에 업로드하고, 반환된 URL을 Cafe24 `attach_file_urls`로 보냅니다.
 
 권장 방향:
 

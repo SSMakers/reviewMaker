@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 import pandas as pd
 
@@ -63,6 +65,12 @@ def _cell_to_optional_date_string(value: Any) -> str | None:
     return str(value).strip()
 
 
+def _filename_from_url(image_url: str) -> str:
+    parsed = urlparse(image_url)
+    filename = unquote(PurePosixPath(parsed.path).name).strip()
+    return filename or "review-image.jpg"
+
+
 def build_article_from_excel_row(
         row: pd.Series,
         *,
@@ -94,6 +102,11 @@ def build_article_from_excel_row(
     if created_date:
         article_data["created_date"] = created_date
     if image_url:
-        article_data["image_url"] = image_url
+        article_data["attach_file_urls"] = [
+            {
+                "filename": _filename_from_url(image_url),
+                "url": image_url,
+            }
+        ]
 
     return ArticleBuildResult(article=article_data)
