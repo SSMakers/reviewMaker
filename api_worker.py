@@ -48,7 +48,7 @@ class ApiWorker(QThread):
 
     def _send_batch(self, batch_data, processed_count, total_rows):
         if not batch_data:
-            return
+            return True
 
         try:
             current_batch_size = len(batch_data)
@@ -56,13 +56,40 @@ class ApiWorker(QThread):
 
             if response.status_code in [200, 201]:
                 self.log_signal.emit(f"✅ [{processed_count}/{total_rows}] {current_batch_size}건 일괄 전송 성공")
+                return True
+            elif response.status_code == 207:
+                error_detail = response.json() if response.content else response.text
+                articles = error_detail.get("articles", []) if isinstance(error_detail, dict) else []
+                errors = error_detail.get("errors", []) if isinstance(error_detail, dict) else []
+                logger.error(
+                    "Cafe24 partial batch failure: status=%s success=%s failed=%s response=%s request=%s",
+                    response.status_code,
+                    len(articles),
+                    len(errors),
+                    error_detail,
+                    batch_data,
+                )
+                self.log_signal.emit(
+                    f"⚠️ [{processed_count}/{total_rows}] 일부 리뷰 등록 실패: "
+                    f"성공 {len(articles)}건, 실패 {len(errors)}건. 자세한 내용은 로그 파일을 확인해주세요."
+                )
+                return False
             else:
                 error_detail = response.json() if response.content else response.text
+                logger.error(
+                    "Cafe24 batch failure: status=%s response=%s request=%s",
+                    response.status_code,
+                    error_detail,
+                    batch_data,
+                )
                 self.log_signal.emit(
-                    f"❌ [{processed_count}/{total_rows}] 전송 실패 ({response.status_code}): {error_detail}")
+                    f"❌ [{processed_count}/{total_rows}] 리뷰 등록 중 오류가 발생했습니다. 자세한 내용은 로그 파일을 확인해주세요.")
+                return False
 
         except Exception as e:
-            self.log_signal.emit(f"⚠️ [{processed_count}/{total_rows}] 네트워크 오류: {str(e)}")
+            logger.exception("Cafe24 batch network error: processed=%s total=%s request=%s", processed_count, total_rows, batch_data)
+            self.log_signal.emit(f"⚠️ [{processed_count}/{total_rows}] 네트워크 오류가 발생했습니다. 자세한 내용은 로그 파일을 확인해주세요.")
+            return False
 
         finally:
             time.sleep(BATCH_DELAY_SEC)
@@ -128,6 +155,7 @@ class ApiWorker(QThread):
                 self.log_signal.emit(line)
 
             batch_data = []
+            has_failure = False
             for index, row in df.iterrows():
                 row_number = index + 1
                 base_result = build_article_from_excel_row(row, product_no=self.product_no)
@@ -148,7 +176,15 @@ class ApiWorker(QThread):
 
                 image_url = image.image_url
                 if image.upload_path:
-                    image_url = self._upload_image(image.upload_path, row_number)
+                    try:
+                        image_url = self._upload_image(image.upload_path, row_number)
+                    except Exception:
+                        logger.exception("Review image upload failed: row=%s path=%s", row_number, image.upload_path)
+                        self.log_signal.emit(f"❌ [{row_number}] 이미지 업로드 중 오류가 발생했습니다. 자세한 내용은 로그 파일을 확인해주세요.")
+                        has_failure = True
+                        progress = int((row_number / total_rows) * 100)
+                        self.progress_signal.emit(progress)
+                        continue
 
                 result = build_article_from_excel_row(
                     row,
@@ -159,18 +195,21 @@ class ApiWorker(QThread):
                 batch_data.append(result.article)
 
                 if len(batch_data) >= BATCH_SIZE:
-                    self._send_batch(batch_data, row_number, total_rows)
+                    if not self._send_batch(batch_data, row_number, total_rows):
+                        has_failure = True
                     batch_data = []
 
                 # UI 업데이트를 위한 진행률 계산
                 progress = int((row_number / total_rows) * 100)
                 self.progress_signal.emit(progress)
 
-            self._send_batch(batch_data, total_rows, total_rows)
-            success = True
+            if not self._send_batch(batch_data, total_rows, total_rows):
+                has_failure = True
+            success = not has_failure
 
         except Exception as e:
-            self.log_signal.emit(f"🔥 치명적 오류 발생: {str(e)}")
+            logger.exception("ApiWorker fatal error")
+            self.log_signal.emit("🔥 작업 중 오류가 발생했습니다. 자세한 내용은 로그 파일을 확인해주세요.")
         finally:
             self._cleanup_uploaded_images()
             self.finished_signal.emit(success)

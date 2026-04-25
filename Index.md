@@ -38,8 +38,8 @@ flowchart TD
 | `ui/login_window.py` | 기기 인증 UI | `ServerApi.auth_verify()`를 호출해 UUID 인증 결과를 확인합니다. |
 | `ui/main_window.py` | 메인 작업 UI | 게시판 번호, 상품 번호, 엑셀 파일 선택, Cafe24 인증, 리뷰 등록 시작을 담당합니다. 비즈니스 변환 로직을 넣지 않습니다. |
 | `api_worker.py` | 리뷰 등록 백그라운드 작업 orchestration | 엑셀 읽기, progress/log signal, 배치 전송을 담당합니다. 행 변환은 `review_article_builder.py`에 위임합니다. |
-| `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, `image_url` 매핑을 관리합니다. |
-| `image_mapping.py` | 리뷰 이미지 출처 결정 | 엑셀 URL, 이미지 파일명, 선택된 이미지 폴더를 기준으로 기존 URL 사용 또는 업로드 대상을 결정합니다. |
+| `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, 이미지 URL을 본문 `<img>` 태그로 삽입하는 규칙을 관리합니다. |
+| `image_mapping.py` | 리뷰 이미지 출처 결정 | 엑셀 URL, 엑셀 파일명, 선택된 이미지 폴더를 기준으로 기존 URL 사용 또는 업로드 대상을 결정합니다. `하이퍼링크` 값이 URL이 아니라 파일명인 경우에도 이미지 폴더에서 찾습니다. |
 | `review_preflight.py` | 등록 전 사전 검사 | 전체 행, 등록 가능 행, URL 이미지, 업로드 필요 이미지, 경고 수를 계산합니다. |
 | `auto_updater.py` | 앱 자동 업데이트 | Pages `latest.json`을 확인해 새 버전이 있으면 다운로드, SHA256 검증, OS별 교체/재실행을 수행합니다. |
 | `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. |
@@ -80,8 +80,8 @@ flowchart TD
 | `리뷰내용` | Conditional | `content` | 제목도 본문도 비어 있으면 해당 행을 건너뜁니다. |
 | `별점` | No | `rating` | 값이 있으면 정수 변환 후 전송합니다. |
 | `날짜` | No | `created_date` | 값이 있으면 그대로 전송합니다. |
-| `하이퍼링크` | No | `attach_file_urls[].url` | 공개 이미지 URL입니다. 기본 이미지 매칭 방식에서는 이 값이 있으면 우선 사용하고, Cafe24 게시글 첨부 파일 URL로 전송합니다. |
-| `이미지파일명` | No | upload source | 선택한 이미지 폴더 안의 파일명입니다. `하이퍼링크`가 없으면 서버에 업로드해 URL을 생성합니다. |
+| `하이퍼링크` | No | `content` image tag or upload source | `http://` 또는 `https://`로 시작하면 공개 이미지 URL로 사용합니다. URL이 아닌 이미지 파일명이면 선택한 이미지 폴더에서 파일을 찾아 서버 업로드 후 URL을 생성합니다. |
+| `이미지파일명` | No | upload source | 선택한 이미지 폴더 안의 파일명입니다. `하이퍼링크`에 URL이 없을 때 서버에 업로드해 URL을 생성합니다. 이 컬럼은 선택 사항이며, 파일명을 `하이퍼링크` 컬럼에 넣어도 됩니다. |
 
 ### Cafe24 Article Payload
 
@@ -97,7 +97,7 @@ flowchart TD
 }
 ```
 
-선택 필드: `rating`, `created_date`, `attach_file_urls`.
+선택 필드: `rating`, `created_date`. 이미지가 있으면 `content` 끝에 `<img src="...">` 태그를 추가합니다.
 
 ## Change Guide
 
@@ -123,7 +123,7 @@ flowchart TD
 ## Refactoring Notes
 
 - 2026-04-24: `ApiWorker.run()`에서 엑셀 행 변환 책임을 `review_article_builder.py`로 분리했습니다. 이후 이미지 업로드 요구사항은 이 builder 앞단 또는 별도 image service를 통해 URL을 보강하는 방식으로 확장하는 것이 자연스럽습니다.
-- 2026-04-24: 서버가 `/review-images` API를 제공한다는 전제로 이미지 폴더 선택, `이미지파일명` 매칭, 사전 검사, multipart 업로드 client를 미리 구현했습니다.
+- 2026-04-24: 서버의 `/review/image/upload` API를 기준으로 이미지 폴더 선택, `이미지파일명` 매칭, 사전 검사, multipart 업로드 client를 구현했습니다.
 - 2026-04-24: `IS_DEBUG=True`일 때 서버 인증을 우회하더라도 `VerifyConfirm` 형태의 디버그 인증 정보를 만들어 `MainPage`에 전달하도록 수정했습니다.
 - 추가 정리 후보: `internal_api/internal_api.py`는 현재 주요 흐름에서 쓰이지 않는 placeholder입니다. 실제 사용처가 없으면 제거하거나 legacy로 명시하는 것이 좋습니다.
 
@@ -131,7 +131,7 @@ flowchart TD
 
 ### 사용자 이미지 업로드 -> 자동 URL 생성
 
-현재 앱은 엑셀 `하이퍼링크` URL과 로컬 이미지 폴더 + `이미지파일명` 컬럼을 모두 지원합니다. 로컬 이미지가 필요한 행은 서버 `/review-images`에 업로드하고, 반환된 URL을 Cafe24 `attach_file_urls`로 보냅니다.
+현재 앱은 엑셀 `하이퍼링크` URL과 로컬 이미지 폴더 + 파일명 매칭을 모두 지원합니다. 로컬 이미지가 필요한 행은 서버 `/review/image/upload`에 업로드하고, 반환된 URL을 Cafe24 리뷰 본문의 `<img>` 태그로 넣어 보냅니다. 파일명은 `이미지파일명` 컬럼에 넣는 것을 권장하지만, 기존 엑셀처럼 `하이퍼링크` 컬럼에 파일명만 넣어도 동작합니다.
 
 권장 방향:
 

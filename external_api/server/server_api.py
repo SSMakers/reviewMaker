@@ -162,9 +162,12 @@ class ServerApi:
             response_data = r.json() if r.content else {}
         except Exception:
             ct = r.headers.get("Content-Type", "")
+            raw_text = (r.text or "")[:1000]
+            if not r.ok:
+                raise HttpError(r.status_code, r.reason, payload={"content_type": ct, "raw_text": raw_text})
             raise BadResponseError(
                 f"Response is not JSON (status={r.status_code}, content-type={ct})",
-                raw_text=(r.text or "")[:1000],
+                raw_text=raw_text,
             )
 
         if not r.ok:

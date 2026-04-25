@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from pathlib import PurePosixPath
+from html import escape
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
 
 import pandas as pd
 
@@ -65,10 +65,24 @@ def _cell_to_optional_date_string(value: Any) -> str | None:
     return str(value).strip()
 
 
-def _filename_from_url(image_url: str) -> str:
-    parsed = urlparse(image_url)
-    filename = unquote(PurePosixPath(parsed.path).name).strip()
-    return filename or "review-image.jpg"
+def _is_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _content_with_image(content: str, image_url: str) -> str:
+    escaped_url = escape(image_url, quote=True)
+    image_html = f'<p><img src="{escaped_url}" alt="" /></p>'
+    return f"{content}\n{image_html}" if content else image_html
+
+
+def _normalize_image_url(image_url: str | None) -> str | None:
+    if not image_url:
+        return None
+    image_url = image_url.strip()
+    if not _is_http_url(image_url):
+        return None
+    return image_url
 
 
 def build_article_from_excel_row(
@@ -82,12 +96,16 @@ def build_article_from_excel_row(
     content = _cell_to_string(row.get(EXCEL_COLUMN_CONTENT, ""))
     rating = _cell_to_optional_int(row.get(EXCEL_COLUMN_RATING))
     created_date = _cell_to_optional_date_string(row.get(EXCEL_COLUMN_CREATED_DATE))
-    image_url = image_url_override if image_url_override is not None else _cell_to_optional_string(row.get(EXCEL_COLUMN_IMAGE_URL))
+    raw_image_url = image_url_override if image_url_override is not None else _cell_to_optional_string(row.get(EXCEL_COLUMN_IMAGE_URL))
+    image_url = _normalize_image_url(raw_image_url)
 
     if not title:
         title = content[:20] if len(content) > 20 else content
         if not title:
             return ArticleBuildResult(article=None, skipped_reason="제목과 본문이 모두 비어있습니다.")
+
+    if image_url:
+        content = _content_with_image(content, image_url)
 
     article_data: dict[str, Any] = {
         "product_no": product_no,
@@ -101,12 +119,5 @@ def build_article_from_excel_row(
         article_data["rating"] = rating
     if created_date:
         article_data["created_date"] = created_date
-    if image_url:
-        article_data["attach_file_urls"] = [
-            {
-                "filename": _filename_from_url(image_url),
-                "url": image_url,
-            }
-        ]
 
     return ArticleBuildResult(article=article_data)

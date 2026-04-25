@@ -6,17 +6,17 @@
 
 ## Background
 
-현재 Review Writer 데스크톱 앱은 엑셀 `하이퍼링크` 컬럼에 이미 준비된 이미지 URL이 있을 때만 Cafe24 게시글 payload의 `image_url`로 전달할 수 있습니다. URL이 없는 로컬 이미지는 사용자가 직접 블로그 등에 업로드한 뒤 URL을 복사해야 하므로 반복 작업이 큽니다.
+현재 Review Writer 데스크톱 앱은 엑셀 `하이퍼링크` 컬럼에 이미 준비된 이미지 URL이 있을 때만 Cafe24 리뷰 본문에 이미지를 넣을 수 있습니다. URL이 없는 로컬 이미지는 사용자가 직접 블로그 등에 업로드한 뒤 URL을 복사해야 하므로 반복 작업이 큽니다.
 
-Cafe24 API에 전달되는 `image_url`은 Cafe24 서버가 접근 가능한 공개 URL이어야 합니다. 따라서 로컬 파일 경로나 앱 내부 임시 경로를 그대로 보낼 수 없습니다.
+Cafe24에 전달되는 이미지 URL은 Cafe24 서버와 사용자의 브라우저가 접근 가능한 공개 URL이어야 합니다. 따라서 로컬 파일 경로나 앱 내부 임시 경로를 그대로 보낼 수 없습니다.
 
 ## Goal
 
-데스크톱 앱이 로컬 이미지 파일을 서버에 업로드하면, 서버가 저장소에 이미지를 저장하고 공개 접근 가능한 HTTPS URL을 반환합니다. 앱은 반환된 URL을 Cafe24 article payload의 `image_url`로 사용합니다.
+데스크톱 앱이 로컬 이미지 파일을 서버에 업로드하면, 서버가 저장소에 이미지를 저장하고 공개 접근 가능한 HTTPS URL을 반환합니다. 앱은 반환된 URL을 Cafe24 article `content`의 `<img>` 태그로 사용합니다.
 
 ## Proposed API
 
-### POST `/review-images`
+### POST `/review/image/upload`
 
 Multipart upload endpoint.
 
@@ -63,9 +63,9 @@ Error responses:
 1. User selects Excel file.
 2. User optionally selects image files or an image folder in the desktop app.
 3. App maps each review row to either an existing `하이퍼링크` URL or a local image file.
-4. For local files, app uploads to `POST /review-images`.
+4. For local files, app uploads to `POST /review/image/upload`.
 5. App receives `url`.
-6. App passes that URL as Cafe24 `image_url` when calling `create_articles`.
+6. App inserts that URL into Cafe24 article `content` as an `<img>` tag when calling `create_articles`.
 
 ## Client Implementation Status
 
@@ -73,7 +73,8 @@ The desktop client is already prepared to test this endpoint.
 
 - UI supports selecting an Excel file and optional image folder.
 - Default mapping mode is `URL 우선, 없으면 파일명`.
-- Excel column `하이퍼링크` is treated as an existing public URL.
+- Excel column `하이퍼링크` is treated as an existing public URL when it starts with `http://` or `https://`.
+- If `하이퍼링크` contains a filename instead of a URL, it is resolved inside the selected image folder for backward compatibility.
 - Excel column `이미지파일명` is resolved inside the selected image folder.
 - Local images are uploaded with multipart field name `file`.
 - Additional multipart fields sent by the client: `device_id`, `mall_id`, `source_row_id`.
