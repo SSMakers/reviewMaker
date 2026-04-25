@@ -56,7 +56,6 @@ class ServerReviewImageIntegrationTests(unittest.TestCase):
         fetch_response = requests.get(
             upload.url,
             timeout=10,
-            verify=self.server_api.config.api_ca_cert_path,
         )
         self.assertEqual(fetch_response.status_code, 200)
         self.assertEqual(fetch_response.content, b"fake-jpeg-bytes-for-mime-based-server-validation")
@@ -74,7 +73,6 @@ class ServerReviewImageIntegrationTests(unittest.TestCase):
         deleted_fetch = requests.get(
             upload.url,
             timeout=10,
-            verify=self.server_api.config.api_ca_cert_path,
         )
         self.assertEqual(deleted_fetch.status_code, 404)
 

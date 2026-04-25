@@ -40,7 +40,7 @@ class ApiConfig:
     base_url: str
     timeout_sec: float
     upload_timeout_sec: float
-    api_ca_cert_path: str
+    api_ca_cert_path: str | None
 
 
 def _load_config() -> ApiConfig:
@@ -52,11 +52,9 @@ def _load_config() -> ApiConfig:
     upload_timeout = float(os.getenv("API_UPLOAD_TIMEOUT_SEC", "60"))
     cert_env = os.getenv("API_CA_CERT_PATH")
 
-    if cert_env is None:
-        raise RuntimeError("API_CA_CERT_PATH is not set in .env")
-
-    api_ca_cert_path = _get_cert_path(cert_env)
-    if not os.path.exists(api_ca_cert_path):
+    use_default_trust = cert_env is None or cert_env.strip().lower() in {"", "default", "system", "none"}
+    api_ca_cert_path = None if use_default_trust else _get_cert_path(cert_env)
+    if api_ca_cert_path and not os.path.exists(api_ca_cert_path):
         raise RuntimeError(f"CA cert not found: {api_ca_cert_path}")
 
     return ApiConfig(
@@ -103,8 +101,6 @@ class ServerApi:
         self.session = requests.Session()
         if getattr(self.config, "api_ca_cert_path", None):
             self.session.verify = str(self.config.api_ca_cert_path)
-        else:
-            raise RuntimeError("API_CA_CERT_PATH is not set (CA cert required)")
 
     def _url(self, path: str) -> str:
         return self.config.base_url.rstrip("/") + "/" + path.lstrip("/")
