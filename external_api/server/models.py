@@ -57,6 +57,7 @@ class ReviewImageUploadResult:
     url: str
     content_type: str
     size_bytes: int
+    expires_at: str
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ReviewImageUploadResult":
@@ -65,4 +66,20 @@ class ReviewImageUploadResult:
             url=str(d["url"]),
             content_type=str(d.get("content_type", "")),
             size_bytes=int(d.get("size_bytes", 0)),
+            expires_at=str(d.get("expires_at", "")),
+        )
+
+
+@dataclass(frozen=True)
+class ReviewImageCleanupResult:
+    deleted: list[str]
+    not_found: list[str]
+    failed: list[dict]
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ReviewImageCleanupResult":
+        return ReviewImageCleanupResult(
+            deleted=[str(item) for item in d.get("deleted", [])],
+            not_found=[str(item) for item in d.get("not_found", [])],
+            failed=list(d.get("failed", [])),
         )

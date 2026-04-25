@@ -1,4 +1,5 @@
 import time
+import uuid
 
 import pandas as pd
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -42,6 +43,8 @@ class ApiWorker(QThread):
         self.device_id = device_id
         self.mall_id = mall_id
         self.server_api = None
+        self.job_id = f"job_{uuid.uuid4().hex}"
+        self.uploaded_image_ids = []
 
     def _send_batch(self, batch_data, processed_count, total_rows):
         if not batch_data:
@@ -77,11 +80,34 @@ class ApiWorker(QThread):
             device_id=self.device_id,
             mall_id=self.mall_id,
             source_row_id=str(row_number),
+            job_id=self.job_id,
         )
         self.log_signal.emit(f"🖼️ [{row_number}] 이미지 업로드 완료: {upload_path.name}")
+        self.uploaded_image_ids.append(result.image_id)
         return result.url
 
+    def _cleanup_uploaded_images(self):
+        if not self.uploaded_image_ids:
+            return
+        if self.server_api is None:
+            self.server_api = ServerApi()
+
+        try:
+            result = self.server_api.cleanup_review_images(
+                device_id=self.device_id,
+                mall_id=self.mall_id,
+                image_ids=self.uploaded_image_ids,
+                job_id=self.job_id,
+            )
+            self.log_signal.emit(
+                f"Temporary image cleanup complete: deleted={len(result.deleted)}, "
+                f"not_found={len(result.not_found)}, failed={len(result.failed)}"
+            )
+        except Exception as e:
+            self.log_signal.emit(f"Temporary image cleanup failed: {str(e)}")
+
     def run(self):
+        success = False
         try:
             self.log_signal.emit(f"🚀 작업을 시작합니다. 파일: {self.file_path}")
 
@@ -90,7 +116,6 @@ class ApiWorker(QThread):
             self.log_signal.emit(f"📊 총 {total_rows}개의 데이터를 발견했습니다.")
             if total_rows == 0:
                 self.log_signal.emit("❌ 등록할 데이터가 없습니다.")
-                self.finished_signal.emit(False)
                 return
 
             preflight = analyze_reviews(
@@ -142,8 +167,10 @@ class ApiWorker(QThread):
                 self.progress_signal.emit(progress)
 
             self._send_batch(batch_data, total_rows, total_rows)
-            self.finished_signal.emit(True)
+            success = True
 
         except Exception as e:
             self.log_signal.emit(f"🔥 치명적 오류 발생: {str(e)}")
-            self.finished_signal.emit(False)
+        finally:
+            self._cleanup_uploaded_images()
+            self.finished_signal.emit(success)

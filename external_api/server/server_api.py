@@ -11,6 +11,7 @@ import requests
 from dotenv import load_dotenv
 
 from external_api.server.models import (
+    ReviewImageCleanupResult,
     ReviewImageUploadResult,
     parse_verify_response,
     VerifyConfirm,
@@ -210,7 +211,7 @@ class ServerApi:
         return result
 
     # -------------------------
-    # POST /review-images
+    # POST /review/image/upload
     # -------------------------
     def upload_review_image(
             self,
@@ -219,6 +220,7 @@ class ServerApi:
             device_id: str,
             mall_id: str,
             source_row_id: str | None = None,
+            job_id: str | None = None,
     ) -> ReviewImageUploadResult:
         payload = {
             "device_id": device_id,
@@ -226,10 +228,34 @@ class ServerApi:
         }
         if source_row_id:
             payload["source_row_id"] = source_row_id
+        if job_id:
+            payload["job_id"] = job_id
 
         data = self._post_multipart(
-            "/review-images",
+            "/review/image/upload",
             data=payload,
             file_path=Path(file_path),
         )
         return ReviewImageUploadResult.from_dict(data)
+
+    # -------------------------
+    # POST /review/image/cleanup
+    # -------------------------
+    def cleanup_review_images(
+            self,
+            *,
+            device_id: str,
+            mall_id: str,
+            image_ids: list[str],
+            job_id: str | None = None,
+    ) -> ReviewImageCleanupResult:
+        payload: Dict[str, Any] = {
+            "device_id": device_id,
+            "mall_id": mall_id,
+            "image_ids": image_ids,
+        }
+        if job_id:
+            payload["job_id"] = job_id
+
+        data = self._post("/review/image/cleanup", payload)
+        return ReviewImageCleanupResult.from_dict(data)
