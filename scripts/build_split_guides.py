@@ -115,7 +115,7 @@ def user_cover() -> Image.Image:
 
 def user_finish() -> Image.Image:
     img, draw = ui.new_page()
-    ui.header(draw, "05 / Finish", "등록 후 확인할 내용", "작업이 끝난 뒤 Cafe24 게시판에서 리뷰와 이미지가 정상 등록됐는지 확인합니다.")
+    ui.header(draw, "06 / Finish", "등록 후 확인할 내용", "작업이 끝난 뒤 Cafe24 게시판에서 리뷰와 이미지가 정상 등록됐는지 확인합니다.")
     checks = [
         ("게시글 수", "엑셀에서 등록 가능한 행 수와 Cafe24 게시글 수가 맞는지 확인합니다."),
         ("이미지 표시", "URL 이미지와 로컬 업로드 이미지가 리뷰 본문에 보이는지 확인합니다."),
@@ -126,6 +126,26 @@ def user_finish() -> Image.Image:
     for i, (title, body) in enumerate(checks, start=1):
         ui.card(draw, (ui.M, y, ui.PAGE_W - ui.M, y + 215), title, body, n=str(i), accent=ui.COLORS["green"])
         y += 260
+    return img
+
+
+def user_macos_open() -> Image.Image:
+    img, draw = ui.new_page()
+    ui.header(draw, "05 / macOS", "처음 실행할 때 보안 안내가 뜨는 경우", "Apple 공증 전 macOS 앱은 첫 실행 시 보안 안내가 표시될 수 있습니다. 처음 1회만 아래 순서로 열면 됩니다.")
+    steps = [
+        ("1", "zip 압축 풀기", "다운로드한 macOS zip 파일을 압축 해제합니다."),
+        ("2", "우클릭 후 열기", "앱을 더블클릭하지 말고 아이콘에서 우클릭한 뒤 `열기`를 누릅니다."),
+        ("3", "다시 열기", "보안 안내창이 뜨면 `열기`를 한 번 더 누릅니다."),
+        ("4", "차단 시 설정 확인", "버튼이 안 보이면 시스템 설정 > 개인정보 보호 및 보안에서 `확인 없이 열기`를 누릅니다."),
+    ]
+    for i, (n, title, body) in enumerate(steps):
+        x = ui.M + (i % 2) * 1125
+        y = 390 + (i // 2) * 330
+        ui.card(draw, (x, y, x + 1010, y + 265), title, body, n=n, accent=ui.COLORS["blue"])
+    ui.rounded(draw, (ui.M, 1150, ui.PAGE_W - ui.M, 1345), ui.COLORS["green2"], ui.COLORS["green"], width=3, radius=30)
+    ui.text(draw, (ui.M + 46, 1198), "안내", size=36, weight="bold", fill="#047857")
+    ui.text(draw, (ui.M + 190, 1202), "이 문구는 Apple이 앱의 개발자 서명과 공증을 확인할 수 없다는 의미입니다. 정식 공증 전까지는 우클릭 후 열기 방식으로 사용합니다.", size=29, fill="#065F46", width=88)
+    ui.code_box(draw, (ui.M, 1400, ui.PAGE_W - ui.M, 1515), "관리자가 요청한 경우에만 실행: xattr -dr com.apple.quarantine \"$HOME/Downloads/Review_Program_1.1.1.app\"")
     return img
 
 
@@ -207,7 +227,7 @@ def build() -> None:
     save_pdf(
         "user",
         USER_PDF,
-        [user_cover(), ui.page_uuid(), ui.page_excel(), ui.page_local_images(), ui.page_app(), user_finish()],
+        [user_cover(), ui.page_uuid(), ui.page_excel(), ui.page_local_images(), ui.page_app(), user_macos_open(), user_finish()],
     )
     save_pdf(
         "admin",

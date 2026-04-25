@@ -1,6 +1,20 @@
 import logging
 import os
+import platform
+from pathlib import Path
 from logging.handlers import RotatingFileHandler
+
+
+def default_log_file() -> str:
+    system = platform.system()
+    home = Path.home()
+    if system == "Darwin":
+        log_dir = home / "Library" / "Logs" / "Review Writer"
+    elif system == "Windows":
+        log_dir = Path(os.getenv("LOCALAPPDATA", str(home))) / "Review Writer" / "Logs"
+    else:
+        log_dir = home / ".review-writer" / "logs"
+    return str(log_dir / "app.log")
 
 def singleton(cls):
     instances = {}
@@ -12,9 +26,10 @@ def singleton(cls):
 
 @singleton
 class FileLogger:
-    def __init__(self, name="GlobalLogger", log_file="logs/app.log", level=logging.INFO):
+    def __init__(self, name="GlobalLogger", log_file=None, level=logging.INFO):
         self.logger = logging.getLogger(name)
         self.logger.setLevel(level)
+        log_file = log_file or default_log_file()
 
         if not self.logger.handlers:
             # 포맷 변경: [%(module)s.%(funcName)s:%(lineno)d] 추가

@@ -12,8 +12,21 @@
 
 1. `version.py` 버전이 변경 유형에 맞게 올라갔는지 확인합니다.
 2. PR 본문에 테스트 결과와 릴리즈 노트가 적혀 있는지 확인합니다.
-3. PR을 `main`에 merge합니다.
-4. GitHub Actions 기본 빌드가 통과했는지 확인합니다.
+3. GitHub repository secret `ENV_FILE`의 `API_BASE_URL`이 반드시 HTTPS인지 확인합니다.
+4. PR을 `main`에 merge합니다.
+5. GitHub Actions 기본 빌드가 통과했는지 확인합니다.
+
+`ENV_FILE` 예시:
+
+```env
+API_BASE_URL=https://152.67.219.136/api
+API_TIMEOUT_SEC=10
+API_UPLOAD_TIMEOUT_SEC=60
+API_CA_CERT_PATH=certs/dev_ca.crt
+UPDATE_LATEST_URL=https://ssmakers.github.io/reviewMaker/latest.json
+```
+
+`API_BASE_URL`이 `http://...`이면 서버가 HTTPS로 redirect하는 과정에서 앱의 POST 요청이 GET으로 바뀌어 `405 Method "GET" not allowed`가 발생할 수 있습니다.
 
 ## Release workflow 실행
 

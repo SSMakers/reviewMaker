@@ -44,7 +44,7 @@ flowchart TD
 | `auto_updater.py` | 앱 자동 업데이트 | Pages `latest.json`을 확인해 새 버전이 있으면 다운로드, SHA256 검증, OS별 교체/재실행을 수행합니다. |
 | `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. 관리자용 배포/버전업 내용은 포함하지 않습니다. |
 | `docs/Review Writer 상품 설명서.pdf` | 고객 전달용 상품 설명서 | Review Writer 도입 효과, 주요 기능, 로컬 이미지 자동 URL화 가치를 설명합니다. |
-| `docs/Review Writer 사용자 가이드.pdf` | 고객 전달용 사용자 가이드 | 구매 후 사용자가 따라야 하는 PC UUID 확인, 엑셀 작성, 이미지 폴더 선택, 앱 실행 순서를 설명합니다. |
+| `docs/Review Writer 사용자 가이드.pdf` | 고객 전달용 사용자 가이드 | 구매 후 사용자가 따라야 하는 PC UUID 확인, 엑셀 작성, 이미지 폴더 선택, macOS 첫 실행, 앱 실행 순서를 설명합니다. |
 | `docs/Review Writer 관리자 가이드.pdf` | 내부 관리자용 운영 가이드 | 버전업, GitHub Release/Pages, 자동 업데이트 검증, Slack/local runner 운영 절차를 설명합니다. 고객용 문서에 섞지 않습니다. |
 | `docs/Review Writer 통합 사용자 가이드.pdf` | 이전 통합 가이드 | 빠른 시작, 엑셀 작성법, 로컬 이미지 업로드, 앱 화면 사용법, UUID 확인, 업데이트/Pages 배포 테스트를 한 문서로 제공하던 이전 통합본입니다. 새 전달 기준은 상품/사용자/관리자 3종 PDF입니다. |
 | `docs/Review Writer 빠른 시작 가이드.pdf` | 고객 전달용 빠른 시작 PDF | 엑셀 작성 예시와 로컬 이미지 업로드 흐름을 시각 자료 중심으로 설명합니다. |
