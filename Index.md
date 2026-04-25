@@ -123,6 +123,7 @@ flowchart TD
 - 버그 수정과 기능 구현은 같은 PR -> 테스트 -> merge -> Slack 배포 요청 -> draft release 생성 -> GitHub Release publish 승인 흐름을 따릅니다.
 - 버그 수정은 PATCH, 기능 추가는 MINOR, 호환성 깨지는 변경은 MAJOR를 올립니다.
 - Windows와 macOS는 항상 같은 버전을 배포합니다.
+- Windows는 PyInstaller `--onefile` `.exe`, macOS는 시작 속도를 위해 PyInstaller `--onedir --windowed` `.app` zip으로 배포합니다.
 - 배포 버전의 단일 기준은 `version.py`입니다.
 - PR 본문에는 변경 유형, version bump, 현재/다음 버전, 테스트, 릴리즈 노트, 리스크를 적습니다.
 - Slack의 "배포해"는 GitHub Actions release workflow 실행 요청이며, 실제 공개 전 GitHub draft release 화면에서 `Publish release`를 한 번 더 수행합니다.

@@ -87,6 +87,8 @@ macOS artifact: Review_Program_1.0.1_macOS.zip
 Pages metadata: latest.json version = 1.0.1
 ```
 
+Windows는 단일 `.exe` 배포 편의성을 위해 PyInstaller `--onefile`을 유지합니다. macOS는 `--onefile` 부팅 지연이 커서 PyInstaller `--onedir --windowed`로 `.app` 번들을 만든 뒤 zip으로 묶어 배포합니다.
+
 ## GitHub Pages와 자동 업데이트
 
 실행 파일 자체는 GitHub Pages에 두지 않는 것을 기본 정책으로 합니다.
