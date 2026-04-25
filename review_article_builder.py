@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from html import escape
 from typing import Any
 from urllib.parse import urlparse
 
@@ -70,12 +69,6 @@ def _is_http_url(value: str) -> bool:
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
-def _content_with_image(content: str, image_url: str) -> str:
-    escaped_url = escape(image_url, quote=True)
-    image_html = f'<p><img src="{escaped_url}" alt="" /></p>'
-    return f"{content}\n{image_html}" if content else image_html
-
-
 def _normalize_image_url(image_url: str | None) -> str | None:
     if not image_url:
         return None
@@ -85,11 +78,19 @@ def _normalize_image_url(image_url: str | None) -> str | None:
     return image_url
 
 
+def _image_filename(image_url: str, image_filename: str | None = None) -> str:
+    if image_filename:
+        return image_filename
+    path_name = urlparse(image_url).path.rsplit("/", 1)[-1]
+    return path_name or "review_image.jpg"
+
+
 def build_article_from_excel_row(
         row: pd.Series,
         *,
         product_no: int,
         image_url_override: str | None = None,
+        image_filename: str | None = None,
 ) -> ArticleBuildResult:
     title = _cell_to_string(row.get(EXCEL_COLUMN_TITLE, ""))
     writer_name = _cell_to_string(row.get(EXCEL_COLUMN_WRITER, DEFAULT_WRITER_NAME), DEFAULT_WRITER_NAME)
@@ -104,9 +105,6 @@ def build_article_from_excel_row(
         if not title:
             return ArticleBuildResult(article=None, skipped_reason="제목과 본문이 모두 비어있습니다.")
 
-    if image_url:
-        content = _content_with_image(content, image_url)
-
     article_data: dict[str, Any] = {
         "product_no": product_no,
         "writer": writer_name,
@@ -119,5 +117,12 @@ def build_article_from_excel_row(
         article_data["rating"] = rating
     if created_date:
         article_data["created_date"] = created_date
+    if image_url:
+        article_data["attach_file_urls"] = [
+            {
+                "name": _image_filename(image_url, image_filename),
+                "url": image_url,
+            }
+        ]
 
     return ArticleBuildResult(article=article_data)

@@ -14,7 +14,7 @@ from review_preflight import analyze_reviews
 
 BATCH_SIZE = 10
 BATCH_DELAY_SEC = 0.5
-AUTO_CLEANUP_UPLOADED_IMAGES = os.getenv("REVIEW_IMAGE_CLEANUP_AFTER_RUN", "").strip().lower() in {"1", "true", "yes"}
+AUTO_CLEANUP_UPLOADED_IMAGES = os.getenv("REVIEW_IMAGE_CLEANUP_AFTER_RUN", "1").strip().lower() not in {"0", "false", "no"}
 
 
 class ApiWorker(QThread):
@@ -192,6 +192,7 @@ class ApiWorker(QThread):
                     row,
                     product_no=self.product_no,
                     image_url_override=image_url,
+                    image_filename=image.upload_path.name if image.upload_path else None,
                 )
 
                 batch_data.append(result.article)
