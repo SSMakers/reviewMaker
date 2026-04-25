@@ -213,8 +213,21 @@ function isTaskCommand(command, text) {
 }
 
 function isReleaseCommand(command, text) {
-  return command.endsWith("/review-release")
-    && (text === "배포해" || text === "deploy" || text === "release" || text.startsWith("배포해 "));
+  if (!command.endsWith("/review-release")) {
+    return false;
+  }
+
+  const normalizedText = text.replace(/\s+/g, " ").trim().toLowerCase();
+  return normalizedText === ""
+    || normalizedText === "배포"
+    || normalizedText === "배포해"
+    || normalizedText === "배포 해"
+    || normalizedText === "deploy"
+    || normalizedText === "release"
+    || normalizedText.startsWith("배포 ")
+    || normalizedText.startsWith("배포해 ")
+    || normalizedText.startsWith("deploy ")
+    || normalizedText.startsWith("release ");
 }
 
 export default {

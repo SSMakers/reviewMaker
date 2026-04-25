@@ -42,15 +42,25 @@ flowchart TD
 | `image_mapping.py` | 리뷰 이미지 출처 결정 | 엑셀 URL, 엑셀 파일명, 선택된 이미지 폴더를 기준으로 기존 URL 사용 또는 업로드 대상을 결정합니다. `하이퍼링크` 값이 URL이 아니라 파일명인 경우에도 이미지 폴더에서 찾습니다. |
 | `review_preflight.py` | 등록 전 사전 검사 | 전체 행, 등록 가능 행, URL 이미지, 업로드 필요 이미지, 경고 수를 계산합니다. |
 | `auto_updater.py` | 앱 자동 업데이트 | Pages `latest.json`을 확인해 새 버전이 있으면 다운로드, SHA256 검증, OS별 교체/재실행을 수행합니다. |
-| `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. |
+| `docs/user-guide.md` | 사용자용 사용 가이드 | 엑셀 작성법, 이미지 매칭 방식, 앱 사용 순서, 오류 대응을 설명합니다. 관리자용 배포/버전업 내용은 포함하지 않습니다. |
+| `docs/Review Writer 상품 설명서.pdf` | 고객 전달용 상품 설명서 | Review Writer 도입 효과, 주요 기능, 로컬 이미지 자동 URL화 가치를 설명합니다. |
+| `docs/Review Writer 사용자 가이드.pdf` | 고객 전달용 사용자 가이드 | 구매 후 사용자가 따라야 하는 PC UUID 확인, 엑셀 작성, 이미지 폴더 선택, 앱 실행 순서를 설명합니다. |
+| `docs/Review Writer 관리자 가이드.pdf` | 내부 관리자용 운영 가이드 | 버전업, GitHub Release/Pages, 자동 업데이트 검증, Slack/local runner 운영 절차를 설명합니다. 고객용 문서에 섞지 않습니다. |
+| `docs/Review Writer 통합 사용자 가이드.pdf` | 이전 통합 가이드 | 빠른 시작, 엑셀 작성법, 로컬 이미지 업로드, 앱 화면 사용법, UUID 확인, 업데이트/Pages 배포 테스트를 한 문서로 제공하던 이전 통합본입니다. 새 전달 기준은 상품/사용자/관리자 3종 PDF입니다. |
+| `docs/Review Writer 빠른 시작 가이드.pdf` | 고객 전달용 빠른 시작 PDF | 엑셀 작성 예시와 로컬 이미지 업로드 흐름을 시각 자료 중심으로 설명합니다. |
 | `docs/Review Writer 스크린샷 사용자 가이드.pdf` | 고객 전달용 시각 가이드 | 실제 앱 화면 캡처를 중심으로 사용 흐름을 설명하는 PDF입니다. |
-| `docs/assets/guide-*.png` | 가이드용 앱 화면 캡처 | PDF 사용자 가이드에 삽입되는 실제 화면 이미지입니다. |
+| `docs/assets/review-writer-sample.xlsx` | 고객용 샘플 엑셀 | URL 이미지와 로컬 이미지 파일명 입력 예시를 포함한 복사용 양식입니다. |
+| `docs/assets/guide-*.png`, `docs/assets/integrated-guide-pages/*.png`, `docs/assets/split-guide-pages/**/*.png` | 가이드용 화면/주석 이미지 | PDF/Markdown 사용자 가이드에 삽입되는 실제 화면 또는 새로 그린 안내 이미지입니다. |
 | `docs/release-process.md` | 버전/PR/배포 운영 규칙 | 버그 수정, 기능 추가, 버전 bump, Slack/GitHub 승인, Release/Pages 업데이트 정책을 정의합니다. |
+| `docs/github-pages-publishing-test-guide.md` | Pages 배포/업데이트 테스트 가이드 | Release publish 후 Pages `index.html`, `latest.json`, 앱 자동 업데이트를 검증하는 단계별 절차입니다. |
 | `docs/slack-operations.md` | Slack 운영 템플릿 | 버그/기능 요청, PR 알림, 배포 요청 메시지 형식을 정의합니다. |
 | `docs/slack-release-webhook.md` | Slack 작업/배포 명령 연동 문서 | `/review-task` Codex 작업 대기 Issue 생성, `/review-release 배포해` workflow 실행 설정을 설명합니다. |
 | `docs/local-codex-runner.md` | 로컬 Codex runner 운영 설계 | PC가 켜져 있을 때 GitHub Issue를 감지해 Codex CLI로 작업/PR을 자동화하는 구조와 테스트 절차를 설명합니다. |
 | `scripts/slack_release_worker.mjs` | Cloudflare Worker Slack webhook | `/review-task`는 GitHub Issue를 생성하고, `/review-release`는 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `scripts/local_codex_runner.py` | 로컬 Codex runner | `codex-task` Issue를 감지해 branch 생성, `codex exec`, 테스트, commit/push, PR 생성을 자동화합니다. |
+| `scripts/build_user_guide_assets.py` | 사용자 가이드 asset 생성 | 샘플 엑셀, 엑셀 작성 주석 이미지, 로컬 이미지 업로드 안내 이미지를 생성합니다. |
+| `scripts/build_integrated_user_guide.py` | 통합 사용자 가이드 생성 | Apple SD Gothic Neo 기반 고해상도 페이지 이미지와 통합 PDF를 생성합니다. |
+| `scripts/build_split_guides.py` | 목적별 3종 PDF 생성 | 통합 사용자 가이드를 기준으로 상품 설명서, 사용자 가이드, 관리자 가이드를 분리 생성합니다. |
 | `scripts/slack_release_lambda.py` | Slack Slash Command Lambda 예시 | Slack signature를 검증하고 GitHub workflow dispatch API로 `release.yml`을 실행합니다. |
 | `.github/codex-instructions.md` | Codex coding agent 지침 | 작업 전 `Index.md`와 release process를 읽고 PR 본문/버전 bump 규칙을 따르도록 안내합니다. |
 | `.github/ISSUE_TEMPLATE/*.md` | GitHub Issue 템플릿 | 버그 리포트와 기능 요청에 필요한 정보를 표준화합니다. |

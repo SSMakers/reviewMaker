@@ -123,6 +123,8 @@ Pages metadata: latest.json version = 1.0.1
 6. OS별 교체 스크립트 실행 후 앱 재시작
 ```
 
+배포 후 Pages와 자동 업데이트 테스트 절차는 `docs/github-pages-publishing-test-guide.md`를 따릅니다.
+
 ## 승인 정책
 
 초기 운영은 안전 우선으로 진행합니다.

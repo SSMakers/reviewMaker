@@ -129,4 +129,15 @@ Slack 채널에서 아래 명령을 입력합니다.
 /review-release 배포해 이미지 업로드 안정화 및 자동 업데이트 추가
 ```
 
+아래 입력도 같은 배포 요청으로 처리됩니다.
+
+```text
+/review-release
+/review-release 배포
+/review-release deploy
+/review-release release
+```
+
 성공하면 GitHub Actions의 `Release Review Program` workflow가 실행되고, 완료 후 draft release가 생성됩니다. 최종 공개는 GitHub Release 화면에서 `Publish release`를 눌러 승인합니다.
+
+Slack 응답에 `나에게만 표시`가 붙는 경우는 ephemeral 메시지입니다. 특히 사용법 안내나 오류 메시지는 채널 전체가 아니라 명령 실행자에게만 보입니다. 배포 요청이 정상 처리되면 채널에 `Release workflow를 실행했습니다.` 메시지가 표시됩니다.
