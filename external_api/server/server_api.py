@@ -190,12 +190,18 @@ class ServerApi:
             *,
             device_id: str,
             plan: str,
+            client_id: str,
+            secret_key: str,
             mall_id: str,
+            redirect_url: str,
     ) -> Dict[str, Any]:
         return self._post("/member/request", {
             "device_id": device_id,
             "plan": plan,
+            "client_id": client_id,
+            "secret_key": secret_key,
             "mall_id": mall_id,
+            "redirect_url": redirect_url,
         })
 
     # -------------------------

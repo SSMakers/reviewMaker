@@ -1,7 +1,7 @@
 import os
 
 from PyQt6.QtCore import Qt, QSettings
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame, QMessageBox, QInputDialog
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame, QMessageBox, QInputDialog, QLineEdit
 
 import version
 from external_api.server.models import VerifyConfirm, VerifyDenied
@@ -223,11 +223,38 @@ class LoginPage(QWidget):
         logger.info(f"디버그 인증 구성 완료 (ID: {self.uuid}, mall_id={mall_id})")
 
     def _membership_request_payload(self):
+        client_id = os.getenv("CAFE24_CLIENT_ID", "").strip()
+        secret_key = os.getenv("CAFE24_CLIENT_SECRET", "").strip()
         mall_id = (
             os.getenv("CAFE24_MALL_ID", "").strip()
             or os.getenv("DEBUG_MALL_ID", "").strip()
         )
         plan = os.getenv("MEMBERSHIP_PLAN", "12").strip() or "12"
+        redirect_url = (
+            os.getenv("CAFE24_REDIRECT_URL", "").strip()
+            or (f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else "")
+        )
+
+        if not client_id:
+            client_id, ok = QInputDialog.getText(
+                self,
+                "Client ID 입력",
+                "Cafe24 Client ID를 입력해주세요:",
+            )
+            if not ok:
+                return None
+            client_id = (client_id or "").strip()
+
+        if not secret_key:
+            secret_key, ok = QInputDialog.getText(
+                self,
+                "Secret Key 입력",
+                "Cafe24 Secret Key를 입력해주세요:",
+                QLineEdit.EchoMode.Password,
+            )
+            if not ok:
+                return None
+            secret_key = (secret_key or "").strip()
 
         if not mall_id:
             mall_id, ok = QInputDialog.getText(
@@ -243,7 +270,37 @@ class LoginPage(QWidget):
             QMessageBox.warning(self, "요청 실패", "mall ID를 입력해야 등록 요청을 보낼 수 있습니다.")
             return None
 
-        return {"mall_id": mall_id, "plan": plan}
+        if not redirect_url:
+            redirect_url, ok = QInputDialog.getText(
+                self,
+                "Redirect URL 입력",
+                "Cafe24 Redirect URL을 입력해주세요:",
+                text=(f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else ""),
+            )
+            if not ok:
+                return None
+            redirect_url = (redirect_url or "").strip()
+
+        missing = []
+        if not client_id:
+            missing.append("Client ID")
+        if not secret_key:
+            missing.append("Secret Key")
+        if not mall_id:
+            missing.append("Mall ID")
+        if not redirect_url:
+            missing.append("Redirect URL")
+        if missing:
+            QMessageBox.warning(self, "요청 실패", f"필수 입력값이 누락되었습니다.\n- " + "\n- ".join(missing))
+            return None
+
+        return {
+            "client_id": client_id,
+            "secret_key": secret_key,
+            "mall_id": mall_id,
+            "plan": plan,
+            "redirect_url": redirect_url,
+        }
 
     def __request_membership(self):
         if not self.uuid:
@@ -262,7 +319,10 @@ class LoginPage(QWidget):
             data = ServerApi().member_request(
                 device_id=self.uuid,
                 plan=payload["plan"],
+                client_id=payload["client_id"],
+                secret_key=payload["secret_key"],
                 mall_id=payload["mall_id"],
+                redirect_url=payload["redirect_url"],
             )
             request_id = data.get("request_id", "-")
             status = data.get("status", "pending")
