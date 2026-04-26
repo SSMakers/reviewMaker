@@ -205,6 +205,12 @@ class ServerApi:
         })
 
     # -------------------------
+    # POST /member/request/status
+    # -------------------------
+    def member_request_status(self, *, device_id: str) -> Dict[str, Any]:
+        return self._post("/member/request/status", {"device_id": device_id})
+
+    # -------------------------
     # POST /auth/verify
     # -------------------------
     def auth_verify(self, *, device_id: str) -> VerifyConfirm | VerifyDenied:

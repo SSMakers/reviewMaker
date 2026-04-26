@@ -1,4 +1,4 @@
 class Version:
     MAJOR = 1
     MINOR = 1
-    PATCH = 9
+    PATCH = 10

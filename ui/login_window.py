@@ -225,10 +225,22 @@ class LoginPage(QWidget):
             try:
                 self.auth_result = ServerApi().auth_verify(device_id=self.uuid)
                 if isinstance(self.auth_result, VerifyDenied):
-                    if self._is_membership_pending(self.uuid):
+                    pending_request_id = None
+                    is_pending = False
+                    try:
+                        status_data = ServerApi().member_request_status(device_id=self.uuid)
+                        is_pending = status_data.get("status") == "pending"
+                        pending_request_id = status_data.get("request_id")
+                        self._mark_membership_pending(self.uuid, is_pending)
+                    except Exception:
+                        logger.warning("등록 요청 상태 조회 실패. 로컬 캐시 상태로 폴백합니다.", exc_info=True)
+                        is_pending = self._is_membership_pending(self.uuid)
+
+                    if is_pending:
+                        suffix = f" (요청 ID: {pending_request_id})" if pending_request_id else ""
                         self.set_auth_status(
                             False,
-                            f"{self.uuid} 등록 요청이 접수되어 승인 대기 중입니다. 관리자 승인 후 다시 시도해주세요.",
+                            f"{self.uuid} 등록 요청이 접수되어 승인 대기 중입니다{suffix}. 관리자 승인 후 다시 시도해주세요.",
                             allow_membership_request=False,
                         )
                         return
