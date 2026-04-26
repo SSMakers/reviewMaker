@@ -38,7 +38,7 @@ flowchart TD
 | `ui/login_window.py` | 기기 인증 UI | `ServerApi.auth_verify()`를 호출해 UUID 인증 결과를 확인합니다. |
 | `ui/main_window.py` | 메인 작업 UI | 게시판 번호, 상품 번호, 엑셀 파일 선택, Cafe24 인증, 리뷰 등록 시작을 담당합니다. 비즈니스 변환 로직을 넣지 않습니다. |
 | `api_worker.py` | 리뷰 등록 백그라운드 작업 orchestration | 엑셀 읽기, progress/log signal, 배치 전송을 담당합니다. 행 변환은 `review_article_builder.py`에 위임합니다. |
-| `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, 이미지 URL을 본문 `<img>` 태그로 삽입하는 규칙을 관리합니다. |
+| `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, `attach_file_urls` 구성 규칙을 관리합니다. |
 | `image_mapping.py` | 리뷰 이미지 출처 결정 | 엑셀 URL, 엑셀 파일명, 선택된 이미지 폴더를 기준으로 기존 URL 사용 또는 업로드 대상을 결정합니다. `하이퍼링크` 값이 URL이 아니라 파일명인 경우에도 이미지 폴더에서 찾습니다. |
 | `review_preflight.py` | 등록 전 사전 검사 | 전체 행, 등록 가능 행, URL 이미지, 업로드 필요 이미지, 경고 수를 계산합니다. |
 | `auto_updater.py` | 앱 자동 업데이트 | Pages `latest.json`을 확인해 새 버전이 있으면 다운로드, SHA256 검증, OS별 교체/재실행을 수행합니다. |
@@ -72,7 +72,7 @@ flowchart TD
 | `external_api/server/server_api.py` | 자체 서버 API client | `.env` 기반 서버 URL/CA 인증서를 로드하고 기기 인증 API와 리뷰 이미지 업로드 API를 호출합니다. |
 | `external_api/server/models.py` | 자체 서버 응답 모델 | 인증 성공/실패, 이미지 업로드 응답을 dataclass로 파싱합니다. |
 | `auth_worker.py` | Cafe24 OAuth QThread | 브라우저 인증 과정을 UI thread 밖에서 실행합니다. |
-| `logger/file_logger.py` | 전역 logger | 콘솔과 `logs/app.log`에 rotating log를 남깁니다. |
+| `logger/file_logger.py` | 전역 logger | 콘솔과 OS별 기본 경로(`~/Library/Logs/Review Writer/app.log`, `%LOCALAPPDATA%\\Review Writer\\Logs\\app.log`)에 rotating log를 남깁니다. |
 | `utils/computer_resource.py` | 장치 UUID 조회 | Windows/macOS UUID 추출을 담당합니다. |
 | `utils/validator.py` | UUID 형식 검증 | 현재 수동 인증 UI가 비활성화되어 있어 사용 빈도는 낮습니다. |
 | `internal_api/internal_api.py` | 과거/placeholder 내부 API | 현재 주요 인증 흐름에서는 `ServerApi`를 사용합니다. 정리 후보입니다. |
@@ -90,7 +90,7 @@ flowchart TD
 | `리뷰내용` | Conditional | `content` | 제목도 본문도 비어 있으면 해당 행을 건너뜁니다. |
 | `별점` | No | `rating` | 값이 있으면 정수 변환 후 전송합니다. |
 | `날짜` | No | `created_date` | 값이 있으면 그대로 전송합니다. |
-| `하이퍼링크` | No | `content` image tag or upload source | `http://` 또는 `https://`로 시작하면 공개 이미지 URL로 사용합니다. URL이 아닌 이미지 파일명이면 선택한 이미지 폴더에서 파일을 찾아 서버 업로드 후 URL을 생성합니다. |
+| `하이퍼링크` | No | image URL or upload source | `http://` 또는 `https://`로 시작하면 공개 이미지 URL로 사용합니다. URL이 아닌 이미지 파일명이면 선택한 이미지 폴더에서 파일을 찾아 서버 업로드 후 URL을 생성합니다. |
 | `이미지파일명` | No | upload source | 선택한 이미지 폴더 안의 파일명입니다. `하이퍼링크`에 URL이 없을 때 서버에 업로드해 URL을 생성합니다. 이 컬럼은 선택 사항이며, 파일명을 `하이퍼링크` 컬럼에 넣어도 됩니다. |
 
 ### Cafe24 Article Payload
@@ -107,7 +107,7 @@ flowchart TD
 }
 ```
 
-선택 필드: `rating`, `created_date`. 이미지가 있으면 `content` 끝에 `<img src="...">` 태그를 추가합니다.
+선택 필드: `rating`, `created_date`. 이미지가 있으면 `attach_file_urls` 배열을 포함합니다.
 
 ## Change Guide
 
@@ -142,7 +142,7 @@ flowchart TD
 
 ### 사용자 이미지 업로드 -> 자동 URL 생성
 
-현재 앱은 엑셀 `하이퍼링크` URL과 로컬 이미지 폴더 + 파일명 매칭을 모두 지원합니다. 로컬 이미지가 필요한 행은 서버 `/review/image/upload`에 업로드하고, 반환된 URL을 Cafe24 리뷰 본문의 `<img>` 태그로 넣어 보냅니다. 파일명은 `이미지파일명` 컬럼에 넣는 것을 권장하지만, 기존 엑셀처럼 `하이퍼링크` 컬럼에 파일명만 넣어도 동작합니다.
+현재 앱은 엑셀 `하이퍼링크` URL과 로컬 이미지 폴더 + 파일명 매칭을 모두 지원합니다. 로컬 이미지가 필요한 행은 서버 `/review/image/upload`에 업로드하고, 반환된 URL을 Cafe24 `attach_file_urls` 필드로 넣어 보냅니다. 파일명은 `이미지파일명` 컬럼에 넣는 것을 권장하지만, 기존 엑셀처럼 `하이퍼링크` 컬럼에 파일명만 넣어도 동작합니다.
 
 권장 방향:
 
@@ -157,6 +157,10 @@ flowchart TD
 - `API_UPLOAD_TIMEOUT_SEC`: 이미지 업로드 timeout, 기본 60초
 - `API_CA_CERT_PATH`: 서버 TLS CA 인증서 경로
 - `UPDATE_LATEST_URL`: 자동 업데이트 metadata URL. 기본값은 `https://ssmakers.github.io/reviewMaker/latest.json`입니다.
+
+코드 상수 설정:
+
+- `api_worker.py`의 `CLIENT_REVIEW_IMAGE_CLEANUP_ENABLED`: 작업 종료 직후 `/review/image/cleanup` 호출 여부. 기본값은 `False`이며, `True`일 때 게시글 이미지가 사라질 수 있어 주의가 필요합니다.
 
 디버그 모드에서 Cafe24 인증/업로드까지 테스트할 때 필요한 환경 변수:
 

@@ -112,6 +112,11 @@ class ServerApi:
                 json=payload,
                 timeout=self.config.timeout_sec,
             )
+        except requests.exceptions.SSLError as e:
+            raise NetworkError(
+                "TLS certificate verification failed. "
+                "Check API_BASE_URL host and API_CA_CERT_PATH in .env."
+            ) from e
         except requests.exceptions.Timeout as e:
             raise TimeoutError(f"Timeout after {self.config.timeout_sec}s") from e
         except requests.exceptions.ConnectionError as e:
@@ -147,6 +152,11 @@ class ServerApi:
                     files=files,
                     timeout=self.config.upload_timeout_sec,
                 )
+        except requests.exceptions.SSLError as e:
+            raise NetworkError(
+                "TLS certificate verification failed. "
+                "Check API_BASE_URL host and API_CA_CERT_PATH in .env."
+            ) from e
         except requests.exceptions.Timeout as e:
             raise TimeoutError(f"Timeout after {self.config.upload_timeout_sec}s") from e
         except requests.exceptions.ConnectionError as e:

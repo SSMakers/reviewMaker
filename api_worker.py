@@ -1,6 +1,5 @@
 import time
 import uuid
-import os
 
 import pandas as pd
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -14,7 +13,9 @@ from review_preflight import analyze_reviews
 
 BATCH_SIZE = 10
 BATCH_DELAY_SEC = 0.5
-AUTO_CLEANUP_UPLOADED_IMAGES = os.getenv("REVIEW_IMAGE_CLEANUP_AFTER_RUN", "1").strip().lower() not in {"0", "false", "no"}
+# 게시글 등록 직후 서버 임시 이미지 cleanup 호출 여부
+# 기본값 False 권장: Cafe24가 이미지를 내부로 복사하기 전에 삭제되면 게시글 이미지가 깨질 수 있습니다.
+CLIENT_REVIEW_IMAGE_CLEANUP_ENABLED = False
 
 
 class ApiWorker(QThread):
@@ -47,6 +48,7 @@ class ApiWorker(QThread):
         self.server_api = None
         self.job_id = f"job_{uuid.uuid4().hex}"
         self.uploaded_image_ids = []
+        self.client_cleanup_enabled = CLIENT_REVIEW_IMAGE_CLEANUP_ENABLED
 
     def _send_batch(self, batch_data, processed_count, total_rows):
         if not batch_data:
@@ -128,12 +130,14 @@ class ApiWorker(QThread):
                 image_ids=self.uploaded_image_ids,
                 job_id=self.job_id,
             )
-            self.log_signal.emit(
-                f"Temporary image cleanup complete: deleted={len(result.deleted)}, "
-                f"not_found={len(result.not_found)}, failed={len(result.failed)}"
+            logger.info(
+                "Temporary image cleanup complete: deleted=%s not_found=%s failed=%s",
+                len(result.deleted),
+                len(result.not_found),
+                len(result.failed),
             )
         except Exception as e:
-            self.log_signal.emit(f"Temporary image cleanup failed: {str(e)}")
+            logger.warning("Temporary image cleanup failed: %s", e, exc_info=True)
 
     def run(self):
         success = False
@@ -214,6 +218,6 @@ class ApiWorker(QThread):
             logger.exception("ApiWorker fatal error")
             self.log_signal.emit("🔥 작업 중 오류가 발생했습니다. 자세한 내용은 로그 파일을 확인해주세요.")
         finally:
-            if AUTO_CLEANUP_UPLOADED_IMAGES:
+            if self.client_cleanup_enabled:
                 self._cleanup_uploaded_images()
             self.finished_signal.emit(success)

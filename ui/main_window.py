@@ -11,7 +11,7 @@ from external_api.cafe24_api import Cafe24Api
 from external_api.server.models import VerifyConfirm
 from global_constants import IS_SAMPLE, BUILD_DATE
 from image_mapping import ImageMappingMode
-from logger.file_logger import logger
+from logger.file_logger import logger, default_log_file
 from review_preflight import count_image_files
 from utils.computer_resource import get_system_uuid
 
@@ -75,7 +75,7 @@ class MainPage(QWidget):
         """로그인 페이지로부터 인증 정보를 전달받아 설정합니다."""
         if auth_result is None:
             logger.error("인증 정보가 비어있어 API 설정을 건너뜁니다.")
-            self.append_log("❌ 인증 정보가 비어있습니다. 로그인 설정을 확인해주세요.")
+            self.append_log_with_log_file("❌ 인증 정보가 비어있습니다. 로그인 설정을 확인해주세요.")
             return
 
         self.auth_result = auth_result
@@ -248,12 +248,12 @@ class MainPage(QWidget):
         if self.cafe24_interface.fetch_access_token(auth_code):
             self.append_log("✨ Access Token 발급 및 저장 완료!")
         else:
-            self.append_log("❌ Access Token 발급 실패. 로그를 확인하세요.")
+            self.append_log_with_log_file("❌ Access Token 발급 실패.")
 
     def on_auth_error(self, error_msg):
         """인증 실패 시 호출"""
         self.btn_refresh.setEnabled(True)
-        self.append_log(f"❌ 인증 과정 중 오류 발생: {error_msg}")
+        self.append_log_with_log_file(f"❌ 인증 과정 중 오류 발생: {error_msg}")
 
     def open_file_dialog(self):
         fname, _ = QFileDialog.getOpenFileName(self, "엑셀 파일 선택", "", "Excel Files (*.xlsx *.xls)")
@@ -333,10 +333,14 @@ class MainPage(QWidget):
             self.append_log("✨ 모든 작업이 종료되었습니다.")
         else:
             logger.warning("🚫 작업이 중단되었습니다. 로그를 확인하세요.")
-            self.append_log("🚫 작업이 중단되었습니다. 로그를 확인하세요.")
+            self.append_log_with_log_file("🚫 작업이 중단되었습니다.")
 
     def append_log(self, text):
         self.log_viewer.appendPlainText(text)
         self.log_viewer.verticalScrollBar().setValue(
             self.log_viewer.verticalScrollBar().maximum()
         )
+
+    def append_log_with_log_file(self, text):
+        self.append_log(text)
+        self.append_log(f"📄 오류 로그 파일: {default_log_file()}")
