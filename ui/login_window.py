@@ -1,11 +1,11 @@
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame
+from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame, QMessageBox
 
 import version
 from external_api.server.models import VerifyConfirm, VerifyDenied
-from external_api.server.server_api import ServerApi
+from external_api.server.server_api import ServerApi, HttpError
 from global_constants import IS_DEBUG
 from logger.file_logger import logger
 from utils.computer_resource import get_system_uuid
@@ -16,7 +16,8 @@ class LoginPage(QWidget):
         super().__init__()
         logger.info(f"Version : {version.Version.MAJOR}.{version.Version.MINOR}.{version.Version.PATCH}")
         self.auth_result = None
-        # self.btn_manual = None
+        self.settings = QSettings("SSMakers", "ReviewWriter")
+        self.btn_request_membership = None
         self.btn_login = None
         self.lbl_info = None
         self.uuid = None
@@ -93,43 +94,57 @@ class LoginPage(QWidget):
         self.btn_login.clicked.connect(self.__handle_login)
         content_layout.addWidget(self.btn_login)
 
-        # (5) 수동 입력 버튼
-        # self.btn_manual = QPushButton("🔑 수동 인증키 입력")
-        # self.btn_manual.setMinimumHeight(45)
-        # self.btn_manual.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.btn_manual.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #0984e3;
-        #         color: white;
-        #         font-size: 16px;
-        #         font-weight: bold;
-        #         border-radius: 12px;
-        #         margin: 5px 10px; /* 상하 5px, 좌우 10px 여백 추가 */
-        #     }
-        #     QPushButton:hover { background-color: #74b9ff; }
-        #     QPushButton:pressed { background-color: #0652dd; }
-        #     QPushButton:disabled { background-color: #dfe6e9; color: #b2bec3; }
-        # """)
-        # self.btn_manual.setVisible(False)  # 기본 숨김
-        # self.btn_manual.clicked.connect(self.open_manual_input)
-        # content_layout.addWidget(self.btn_manual)
+        # (5) 등록 요청 버튼 (미등록 기기일 때만 표시)
+        self.btn_request_membership = QPushButton("📝 등록 요청")
+        self.btn_request_membership.setMinimumHeight(45)
+        self.btn_request_membership.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_request_membership.setStyleSheet("""
+            QPushButton {
+                background-color: #6c5ce7;
+                color: white;
+                font-size: 14px;
+                font-weight: 700;
+                border-radius: 12px;
+                margin: 5px 10px;
+            }
+            QPushButton:hover { background-color: #7f6df0; }
+            QPushButton:pressed { background-color: #5b4dc9; }
+            QPushButton:disabled { background-color: #dfe6e9; color: #b2bec3; }
+        """)
+        self.btn_request_membership.setVisible(False)
+        self.btn_request_membership.clicked.connect(self.__request_membership)
+        content_layout.addWidget(self.btn_request_membership)
 
         outer_layout.addWidget(content_widget)
         self.setLayout(outer_layout)
 
-    def set_auth_status(self, success, message):
+    def set_auth_status(self, success, message, *, allow_membership_request=False):
         """인증 상태에 따른 UI 업데이트 공통 로직"""
         if success:
             self.lbl_info.setText(f"✅ {message}")
             self.lbl_info.setStyleSheet("color: #27ae60; font-weight: bold; font-size: 13px;")
             self.btn_login.setEnabled(True)
             self.btn_login.setVisible(True)
-            # self.btn_manual.setVisible(False)
+            self.btn_request_membership.setVisible(False)
         else:
             self.lbl_info.setText(f"❌ {message}")
             self.lbl_info.setStyleSheet("color: #d63031; font-weight: bold; font-size: 13px;")
             self.btn_login.setVisible(False)
-            # self.btn_manual.setVisible(False)
+            self.btn_request_membership.setVisible(allow_membership_request)
+            self.btn_request_membership.setEnabled(allow_membership_request)
+
+    def _membership_pending_key(self, device_id: str) -> str:
+        return f"membership/request_pending/{device_id}"
+
+    def _is_membership_pending(self, device_id: str) -> bool:
+        if not device_id:
+            return False
+        return bool(self.settings.value(self._membership_pending_key(device_id), False, type=bool))
+
+    def _mark_membership_pending(self, device_id: str, pending: bool) -> None:
+        if not device_id:
+            return
+        self.settings.setValue(self._membership_pending_key(device_id), pending)
 
     def check_initial_uuid(self):
         self.uuid = get_system_uuid()
@@ -138,9 +153,21 @@ class LoginPage(QWidget):
             try:
                 self.auth_result = ServerApi().auth_verify(device_id=self.uuid)
                 if isinstance(self.auth_result, VerifyDenied):
-                    self.set_auth_status(False, f"{self.uuid} 등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
+                    if self._is_membership_pending(self.uuid):
+                        self.set_auth_status(
+                            False,
+                            f"{self.uuid} 등록 요청이 접수되어 승인 대기 중입니다. 관리자 승인 후 다시 시도해주세요.",
+                            allow_membership_request=False,
+                        )
+                        return
+                    self.set_auth_status(
+                        False,
+                        f"{self.uuid} 등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑",
+                        allow_membership_request=True,
+                    )
                     return
                 else:
+                    self._mark_membership_pending(self.uuid, False)
                     self.set_auth_status(True, f"자동 인증 성공 (ID: {self.uuid[:8]}...)")
                     logger.info(f"자동 인증 성공 (ID: {self.uuid})")
             except Exception as e:
@@ -195,25 +222,109 @@ class LoginPage(QWidget):
 
         logger.info(f"디버그 인증 구성 완료 (ID: {self.uuid}, mall_id={mall_id})")
 
-    # def open_manual_input(self):
-    #     dialog = UUIDInputDialog(self)
-    #     if dialog.exec() == UUIDInputDialog.DialogCode.Accepted:
-    #         manual_uuid = dialog.get_uuid().strip()
-    #         if manual_uuid:
-    #             self.uuid = manual_uuid
-    #
-    #             if not validate_uuid_format(self.uuid):
-    #                 QMessageBox.warning(self, "형식 오류", "UUID 형식이 올바르지 않습니다. 다시 확인해주세요. 🔍")
-    #                 return
-    #
-    #             result = ServerApi().auth_verify(device_id=self.uuid)
-    #             if isinstance(result, VerifyDenied):
-    #                 QMessageBox.warning(self, "인증 실패", "등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑")
-    #                 return
-    #
-    #             self.set_auth_status(True, "수동 인증이 완료되었습니다!")
-    #         else:
-    #             QMessageBox.warning(self, "경고", "UUID를 입력해야 합니다.")
+    def _membership_request_payload(self):
+        client_id = os.getenv("CAFE24_CLIENT_ID", "").strip()
+        secret_key = os.getenv("CAFE24_CLIENT_SECRET", "").strip()
+        mall_id = (
+            os.getenv("CAFE24_MALL_ID", "").strip()
+            or os.getenv("DEBUG_MALL_ID", "").strip()
+        )
+        plan = os.getenv("MEMBERSHIP_PLAN", "12").strip() or "12"
+        redirect_url = (
+            os.getenv("CAFE24_REDIRECT_URL", "").strip()
+            or (f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else "")
+        )
+
+        missing = []
+        if not client_id:
+            missing.append("CAFE24_CLIENT_ID")
+        if not secret_key:
+            missing.append("CAFE24_CLIENT_SECRET")
+        if not mall_id:
+            missing.append("CAFE24_MALL_ID 또는 DEBUG_MALL_ID")
+        if not redirect_url:
+            missing.append("CAFE24_REDIRECT_URL")
+
+        return {
+            "client_id": client_id,
+            "secret_key": secret_key,
+            "mall_id": mall_id,
+            "plan": plan,
+            "redirect_url": redirect_url,
+            "missing": missing,
+        }
+
+    def __request_membership(self):
+        if not self.uuid:
+            QMessageBox.warning(self, "요청 실패", "UUID를 찾을 수 없어 등록 요청을 보낼 수 없습니다.")
+            return
+
+        payload = self._membership_request_payload()
+        if payload["missing"]:
+            missing_text = ", ".join(payload["missing"])
+            QMessageBox.warning(
+                self,
+                "요청 실패",
+                f"등록 요청에 필요한 설정이 부족합니다.\n누락: {missing_text}",
+            )
+            return
+
+        self.btn_request_membership.setEnabled(False)
+        self.lbl_info.setText("⏳ 등록 요청을 전송하고 있습니다...")
+        self.lbl_info.setStyleSheet("color: #57606f; font-weight: bold; font-size: 13px;")
+
+        try:
+            data = ServerApi().member_request(
+                device_id=self.uuid,
+                plan=payload["plan"],
+                client_id=payload["client_id"],
+                secret_key=payload["secret_key"],
+                mall_id=payload["mall_id"],
+                redirect_url=payload["redirect_url"],
+            )
+            request_id = data.get("request_id", "-")
+            status = data.get("status", "pending")
+            logger.info("멤버십 등록 요청 성공: request_id=%s status=%s device_id=%s", request_id, status, self.uuid)
+            QMessageBox.information(
+                self,
+                "등록 요청 완료",
+                f"등록 요청이 접수되었습니다.\n요청 ID: {request_id}\n상태: {status}",
+            )
+            self._mark_membership_pending(self.uuid, True)
+            self.set_auth_status(
+                False,
+                f"{self.uuid} 등록 요청이 접수되었습니다. 관리자 승인 후 다시 시도해주세요.",
+                allow_membership_request=False,
+            )
+        except HttpError as e:
+            # 서버에서 중복 pending 요청을 409로 돌려주는 경우를 idempotent 성공으로 처리합니다.
+            if e.status_code == 409:
+                self._mark_membership_pending(self.uuid, True)
+                self.set_auth_status(
+                    False,
+                    f"{self.uuid} 등록 요청이 이미 접수되어 승인 대기 중입니다.",
+                    allow_membership_request=False,
+                )
+                QMessageBox.information(self, "등록 요청 대기", "이미 등록 요청이 접수되어 승인 대기 중입니다.")
+                return
+            logger.exception("멤버십 등록 요청 실패: device_id=%s", self.uuid)
+            QMessageBox.critical(self, "요청 실패", f"등록 요청 전송에 실패했습니다.\n{e}")
+            self.set_auth_status(
+                False,
+                f"{self.uuid} 등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑",
+                allow_membership_request=True,
+            )
+        except Exception as e:
+            logger.exception("멤버십 등록 요청 실패: device_id=%s", self.uuid)
+            QMessageBox.critical(self, "요청 실패", f"등록 요청 전송에 실패했습니다.\n{e}")
+            self.set_auth_status(
+                False,
+                f"{self.uuid} 등록되지 않은 기기입니다. 관리자에게 문의하세요. 🛑",
+                allow_membership_request=True,
+            )
+        finally:
+            if self.btn_request_membership.isVisible():
+                self.btn_request_membership.setEnabled(True)
 
     def __handle_login(self):
         if self.auth_result is None:

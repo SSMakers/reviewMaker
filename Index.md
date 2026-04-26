@@ -35,7 +35,7 @@ flowchart TD
 | --- | --- | --- |
 | `README.md` | 프로젝트 소개 및 사용/운영 진입점 | local runner 테스트 문장과 운영/배포 흐름 문서 링크를 포함합니다. |
 | `main.py` | 앱 진입점 및 페이지 전환 컨트롤러 | `LoginPage` 인증 성공 결과를 `MainPage.set_auth_info()`로 전달합니다. |
-| `ui/login_window.py` | 기기 인증 UI | `ServerApi.auth_verify()`를 호출해 UUID 인증 결과를 확인합니다. |
+| `ui/login_window.py` | 기기 인증 UI | `ServerApi.auth_verify()`로 UUID 인증을 확인하고, 미등록 기기일 때 `등록 요청` 버튼으로 `ServerApi.member_request()`를 호출합니다. |
 | `ui/main_window.py` | 메인 작업 UI | 게시판 번호, 상품 번호, 엑셀 파일 선택, Cafe24 인증, 리뷰 등록 시작을 담당합니다. 비즈니스 변환 로직을 넣지 않습니다. |
 | `api_worker.py` | 리뷰 등록 백그라운드 작업 orchestration | 엑셀 읽기, progress/log signal, 배치 전송을 담당합니다. 행 변환은 `review_article_builder.py`에 위임합니다. |
 | `review_article_builder.py` | 엑셀 행 -> Cafe24 article payload 변환 | 엑셀 컬럼명, 기본 작성자, 제목 fallback, `attach_file_urls` 구성 규칙을 관리합니다. |
@@ -168,3 +168,4 @@ flowchart TD
 - `CAFE24_CLIENT_SECRET`: Cafe24 앱 secret
 - `CAFE24_MALL_ID` 또는 `DEBUG_MALL_ID`: Cafe24 mall id
 - `CAFE24_REDIRECT_URL`: 선택 사항. 없으면 `https://{mall_id}.cafe24.com/order/basket.html`을 사용합니다.
+- `MEMBERSHIP_PLAN`: 미등록 기기의 등록 요청(`/member/request`)에 사용할 요금제 코드. 기본값은 `12`입니다.
