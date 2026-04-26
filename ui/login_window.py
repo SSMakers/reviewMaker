@@ -1,7 +1,7 @@
 import os
 
 from PyQt6.QtCore import Qt, QSettings
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame, QMessageBox, QInputDialog
 
 import version
 from external_api.server.models import VerifyConfirm, VerifyDenied
@@ -223,36 +223,27 @@ class LoginPage(QWidget):
         logger.info(f"디버그 인증 구성 완료 (ID: {self.uuid}, mall_id={mall_id})")
 
     def _membership_request_payload(self):
-        client_id = os.getenv("CAFE24_CLIENT_ID", "").strip()
-        secret_key = os.getenv("CAFE24_CLIENT_SECRET", "").strip()
         mall_id = (
             os.getenv("CAFE24_MALL_ID", "").strip()
             or os.getenv("DEBUG_MALL_ID", "").strip()
         )
         plan = os.getenv("MEMBERSHIP_PLAN", "12").strip() or "12"
-        redirect_url = (
-            os.getenv("CAFE24_REDIRECT_URL", "").strip()
-            or (f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else "")
-        )
 
-        missing = []
-        if not client_id:
-            missing.append("CAFE24_CLIENT_ID")
-        if not secret_key:
-            missing.append("CAFE24_CLIENT_SECRET")
         if not mall_id:
-            missing.append("CAFE24_MALL_ID 또는 DEBUG_MALL_ID")
-        if not redirect_url:
-            missing.append("CAFE24_REDIRECT_URL")
+            mall_id, ok = QInputDialog.getText(
+                self,
+                "쇼핑몰 ID 입력",
+                "Cafe24 mall ID를 입력해주세요 (예: venel):",
+            )
+            if not ok:
+                return None
+            mall_id = (mall_id or "").strip()
 
-        return {
-            "client_id": client_id,
-            "secret_key": secret_key,
-            "mall_id": mall_id,
-            "plan": plan,
-            "redirect_url": redirect_url,
-            "missing": missing,
-        }
+        if not mall_id:
+            QMessageBox.warning(self, "요청 실패", "mall ID를 입력해야 등록 요청을 보낼 수 있습니다.")
+            return None
+
+        return {"mall_id": mall_id, "plan": plan}
 
     def __request_membership(self):
         if not self.uuid:
@@ -260,13 +251,7 @@ class LoginPage(QWidget):
             return
 
         payload = self._membership_request_payload()
-        if payload["missing"]:
-            missing_text = ", ".join(payload["missing"])
-            QMessageBox.warning(
-                self,
-                "요청 실패",
-                f"등록 요청에 필요한 설정이 부족합니다.\n누락: {missing_text}",
-            )
+        if payload is None:
             return
 
         self.btn_request_membership.setEnabled(False)
@@ -277,10 +262,7 @@ class LoginPage(QWidget):
             data = ServerApi().member_request(
                 device_id=self.uuid,
                 plan=payload["plan"],
-                client_id=payload["client_id"],
-                secret_key=payload["secret_key"],
                 mall_id=payload["mall_id"],
-                redirect_url=payload["redirect_url"],
             )
             request_id = data.get("request_id", "-")
             status = data.get("status", "pending")
