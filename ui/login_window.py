@@ -1,7 +1,18 @@
 import os
 
 from PyQt6.QtCore import Qt, QSettings
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFrame, QMessageBox, QInputDialog, QLineEdit
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QLabel,
+    QFrame,
+    QMessageBox,
+    QLineEdit,
+    QDialog,
+    QFormLayout,
+    QDialogButtonBox,
+)
 
 import version
 from external_api.server.models import VerifyConfirm, VerifyDenied
@@ -9,6 +20,67 @@ from external_api.server.server_api import ServerApi, HttpError
 from global_constants import IS_DEBUG
 from logger.file_logger import logger
 from utils.computer_resource import get_system_uuid
+
+
+class MembershipRequestDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("등록 요청 정보 입력")
+        self.setModal(True)
+        self.setMinimumWidth(430)
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.mall_id_input = QLineEdit()
+        self.mall_id_input.setPlaceholderText("mall id")
+        form.addRow("Mall ID", self.mall_id_input)
+
+        self.redirect_url_input = QLineEdit()
+        self.redirect_url_input.setPlaceholderText("https://...")
+        form.addRow("Redirect URL", self.redirect_url_input)
+
+        self.client_id_input = QLineEdit()
+        self.client_id_input.setPlaceholderText("client id")
+        form.addRow("Client ID", self.client_id_input)
+
+        self.secret_key_input = QLineEdit()
+        self.secret_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.secret_key_input.setPlaceholderText("client secret")
+        form.addRow("Client Secret", self.secret_key_input)
+
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("전송")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("취소")
+        buttons.accepted.connect(self._validate_and_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _validate_and_accept(self):
+        values = self.values()
+        missing = [name for name, value in values.items() if not value]
+        if missing:
+            label_map = {
+                "mall_id": "Mall ID",
+                "redirect_url": "Redirect URL",
+                "client_id": "Client ID",
+                "secret_key": "Client Secret",
+            }
+            formatted = "\n- ".join(label_map[m] for m in missing)
+            QMessageBox.warning(self, "입력 확인", f"아래 항목을 입력해주세요.\n- {formatted}")
+            return
+        self.accept()
+
+    def values(self) -> dict[str, str]:
+        return {
+            "mall_id": self.mall_id_input.text().strip(),
+            "redirect_url": self.redirect_url_input.text().strip(),
+            "client_id": self.client_id_input.text().strip(),
+            "secret_key": self.secret_key_input.text().strip(),
+        }
 
 
 class LoginPage(QWidget):
@@ -223,83 +295,21 @@ class LoginPage(QWidget):
         logger.info(f"디버그 인증 구성 완료 (ID: {self.uuid}, mall_id={mall_id})")
 
     def _membership_request_payload(self):
-        client_id = os.getenv("CAFE24_CLIENT_ID", "").strip()
-        secret_key = os.getenv("CAFE24_CLIENT_SECRET", "").strip()
-        mall_id = (
-            os.getenv("CAFE24_MALL_ID", "").strip()
-            or os.getenv("DEBUG_MALL_ID", "").strip()
-        )
+        # 등록 요청은 테스트용 .env 값이 아닌 사용자 입력값을 사용합니다.
         plan = os.getenv("MEMBERSHIP_PLAN", "12").strip() or "12"
-        redirect_url = (
-            os.getenv("CAFE24_REDIRECT_URL", "").strip()
-            or (f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else "")
-        )
 
-        if not client_id:
-            client_id, ok = QInputDialog.getText(
-                self,
-                "Client ID 입력",
-                "Cafe24 Client ID를 입력해주세요:",
-            )
-            if not ok:
-                return None
-            client_id = (client_id or "").strip()
-
-        if not secret_key:
-            secret_key, ok = QInputDialog.getText(
-                self,
-                "Secret Key 입력",
-                "Cafe24 Secret Key를 입력해주세요:",
-                QLineEdit.EchoMode.Password,
-            )
-            if not ok:
-                return None
-            secret_key = (secret_key or "").strip()
-
-        if not mall_id:
-            mall_id, ok = QInputDialog.getText(
-                self,
-                "쇼핑몰 ID 입력",
-                "Cafe24 mall ID를 입력해주세요 (예: venel):",
-            )
-            if not ok:
-                return None
-            mall_id = (mall_id or "").strip()
-
-        if not mall_id:
-            QMessageBox.warning(self, "요청 실패", "mall ID를 입력해야 등록 요청을 보낼 수 있습니다.")
+        dialog = MembershipRequestDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return None
 
-        if not redirect_url:
-            redirect_url, ok = QInputDialog.getText(
-                self,
-                "Redirect URL 입력",
-                "Cafe24 Redirect URL을 입력해주세요:",
-                text=(f"https://{mall_id}.cafe24.com/order/basket.html" if mall_id else ""),
-            )
-            if not ok:
-                return None
-            redirect_url = (redirect_url or "").strip()
-
-        missing = []
-        if not client_id:
-            missing.append("Client ID")
-        if not secret_key:
-            missing.append("Secret Key")
-        if not mall_id:
-            missing.append("Mall ID")
-        if not redirect_url:
-            missing.append("Redirect URL")
-        if missing:
-            QMessageBox.warning(self, "요청 실패", f"필수 입력값이 누락되었습니다.\n- " + "\n- ".join(missing))
-            return None
+        values = dialog.values()
 
         return {
-            "client_id": client_id,
-            "secret_key": secret_key,
-            "mall_id": mall_id,
+            "client_id": values["client_id"],
+            "secret_key": values["secret_key"],
+            "mall_id": values["mall_id"],
             "plan": plan,
-            "redirect_url": redirect_url,
+            "redirect_url": values["redirect_url"],
         }
 
     def __request_membership(self):
