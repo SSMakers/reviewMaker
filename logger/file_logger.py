@@ -46,8 +46,12 @@ class FileLogger:
 
             # 10MB 로테이팅 파일 핸들러
             log_dir = os.path.dirname(log_file)
-            if log_dir and not os.path.exists(log_dir):
-                os.makedirs(log_dir)
+            if log_dir:
+                try:
+                    os.makedirs(log_dir, exist_ok=True)
+                except FileExistsError:
+                    if not os.path.isdir(log_dir):
+                        raise
 
             file_handler = RotatingFileHandler(
                 log_file, maxBytes=10*1024*1024, backupCount=3, encoding='utf-8'

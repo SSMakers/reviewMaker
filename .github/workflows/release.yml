@@ -89,7 +89,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env;." --add-data "certs;certs" main.py
+          pyinstaller --onedir --noconsole --name "Review_Program" --add-data ".env;." --add-data "certs;certs" main.py
 
       - name: Build Windows installer
         if: matrix.os == 'windows-latest'

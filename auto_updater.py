@@ -284,6 +284,8 @@ class AutoUpdater(QObject):
                 "",
                 str(download_path),
                 "/SP-",
+                "/VERYSILENT",
+                "/SUPPRESSMSGBOXES",
                 "/CLOSEAPPLICATIONS",
                 "/FORCECLOSEAPPLICATIONS",
                 "/NORESTART",
