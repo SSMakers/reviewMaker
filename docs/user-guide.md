@@ -109,7 +109,7 @@ Apple Developer 공증을 적용하기 전까지 macOS에서는 처음 실행할
 관리자가 요청한 경우에만 터미널에서 아래 명령을 실행합니다. 일반 사용자는 우클릭 후 `열기` 방식을 먼저 사용하세요.
 
 ```bash
-xattr -dr com.apple.quarantine "$HOME/Downloads/Review_Program_1.1.1.app"
+xattr -dr com.apple.quarantine "$HOME/Downloads/Review_Program_<버전>.app"
 ```
 
 ## 6. 작업 로그에서 확인할 내용
@@ -141,7 +141,7 @@ Cafe24 리뷰 등록 전에는 `인증` 버튼을 눌러 Cafe24 Access Token을 
 ### 등록되지 않은 기기라고 나옵니다
 
 로그인 화면 하단 `등록 요청` 버튼을 눌러 관리자 승인 요청을 보낼 수 있습니다.  
-하나의 입력창에서 `Mall ID`, `Redirect URL`, `Client ID`, `Client Secret`을 모두 입력한 뒤 `전송`을 누릅니다.  
+등록 요청 창에서 `Mall ID`, `Redirect URL`, `Client ID`, `Client Secret` 4개 입력칸을 모두 채운 뒤 `전송`을 누릅니다.  
 항목이 하나라도 비어 있으면 전송되지 않습니다.
 요청 접수 후 관리자가 승인하면 앱을 다시 실행해 인증을 확인합니다.
 
