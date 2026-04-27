@@ -7,6 +7,7 @@ from auto_updater import AutoUpdater
 from logger.file_logger import logger
 from ui.login_window import LoginPage
 from ui.main_window import MainPage  # 아직 만들지 않았다면 아래 3번 참고
+from version import Version
 
 
 class AppController(QMainWindow):
@@ -45,6 +46,13 @@ class AppController(QMainWindow):
 
 
 if __name__ == "__main__":
+    logger.info(
+        "애플리케이션 시작: version=%s.%s.%s, platform=%s",
+        Version.MAJOR,
+        Version.MINOR,
+        Version.PATCH,
+        sys.platform,
+    )
     app = QApplication(sys.argv)
     controller = AppController()
     controller.show()

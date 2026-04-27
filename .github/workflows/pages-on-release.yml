@@ -134,7 +134,7 @@ jobs:
               <section class="card">
                 <span class="version">${TAG}</span>
                 <div class="actions">
-                  <a class="button primary" href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}.exe">Windows 다운로드</a>
+                  <a class="button primary" href="https://github.com/${{ github.repository }}/releases/download/${TAG}/ReviewWriterSetup_${VERSION}.exe">Windows 다운로드</a>
                   <a class="button" href="https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}_macOS.zip">macOS 다운로드</a>
                   <a class="button" href="./latest.json">latest.json</a>
                 </div>

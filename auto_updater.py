@@ -47,6 +47,7 @@ def is_newer_version(remote_version: str, current_version: str) -> bool:
 class UpdateAsset:
     url: str
     sha256: str | None = None
+    kind: str = "portable"
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,7 @@ class UpdateMetadata:
             asset=UpdateAsset(
                 url=str(url),
                 sha256=asset_data.get("sha256"),
+                kind=str(asset_data.get("kind") or "portable"),
             ),
         )
 
@@ -214,7 +216,7 @@ class AutoUpdater(QObject):
             return
 
         try:
-            self._apply_update(Path(download_path))
+            self._apply_update(metadata, Path(download_path))
         except Exception as exc:
             QMessageBox.critical(
                 self.parent_window,
@@ -222,19 +224,23 @@ class AutoUpdater(QObject):
                 f"업데이트를 적용하지 못했습니다.\n\n{exc}",
             )
 
-    def _apply_update(self, download_path: Path):
+    def _apply_update(self, metadata: UpdateMetadata, download_path: Path):
         system = platform.system()
         current_executable = Path(sys.executable).resolve()
         if system == "Windows":
-            self._apply_windows_update(download_path, current_executable)
+            self._apply_windows_update(metadata, download_path, current_executable)
         elif system == "Darwin":
-            self._apply_macos_update(download_path, current_executable)
+            self._apply_macos_update(metadata, download_path, current_executable)
         else:
             raise RuntimeError(f"지원하지 않는 OS입니다: {system}")
 
         QApplication.quit()
 
-    def _apply_windows_update(self, download_path: Path, current_executable: Path):
+    def _apply_windows_update(self, metadata: UpdateMetadata, download_path: Path, current_executable: Path):
+        if metadata.asset.kind == "installer":
+            self._run_windows_installer(download_path)
+            return
+
         current_executable = self._normalize_windows_executable_path(current_executable)
         if current_executable.suffix.lower() != ".exe":
             raise RuntimeError(f"현재 실행 파일 경로를 확인할 수 없습니다: {current_executable}")
@@ -269,7 +275,23 @@ class AutoUpdater(QObject):
             normalized = normalized.parent
         return normalized
 
-    def _apply_macos_update(self, download_path: Path, current_executable: Path):
+    def _run_windows_installer(self, download_path: Path):
+        subprocess.Popen(
+            [
+                "cmd",
+                "/c",
+                "start",
+                "",
+                str(download_path),
+                "/SP-",
+                "/CLOSEAPPLICATIONS",
+                "/FORCECLOSEAPPLICATIONS",
+                "/NORESTART",
+            ],
+            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+        )
+
+    def _apply_macos_update(self, metadata: UpdateMetadata, download_path: Path, current_executable: Path):
         extracted_executable = self._extract_macos_asset(download_path)
         target_path = self._macos_app_bundle(current_executable) or current_executable
         script_path = Path(tempfile.gettempdir()) / "review_writer_update.sh"

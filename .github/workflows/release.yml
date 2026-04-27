@@ -91,20 +91,27 @@ jobs:
         run: |
           pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env;." --add-data "certs;certs" main.py
 
+      - name: Build Windows installer
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          iscc /DAPP_VERSION=$env:APP_VERSION .github\installer\ReviewWriter.iss
+
       - name: Build macOS app
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
-          pyinstaller --onedir --windowed --name "Review_Program_${APP_VERSION}" --add-data ".env:." --add-data "certs:certs" main.py
+          pyinstaller --onedir --windowed --name "Review_Program" --add-data ".env:." --add-data "certs:certs" main.py
           cd dist
-          ditto --norsrc -c -k --keepParent "Review_Program_${APP_VERSION}.app" "Review_Program_${APP_VERSION}_macOS.zip"
+          ditto --norsrc -c -k --keepParent "Review_Program.app" "Review_Program_${APP_VERSION}_macOS.zip"
 
       - name: Upload Windows release asset
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: release-windows
-          path: dist/Review_Program.exe
+          path: dist/ReviewWriterSetup_${{ env.APP_VERSION }}.exe
 
       - name: Upload macOS release asset
         if: matrix.os == 'macos-latest'
@@ -134,7 +141,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          cp release-assets/release-windows/Review_Program.exe release/Review_Program_${VERSION}.exe
+          cp release-assets/release-windows/ReviewWriterSetup_${VERSION}.exe release/
           cp release-assets/release-macos/Review_Program_${VERSION}_macOS.zip release/
           cd release
           sha256sum * > checksums.txt
@@ -143,12 +150,14 @@ jobs:
             "version": "${VERSION}",
             "published_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "windows": {
-              "url": "https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}.exe",
-              "sha256": "$(sha256sum Review_Program_${VERSION}.exe | awk '{print $1}')"
+              "url": "https://github.com/${{ github.repository }}/releases/download/${TAG}/ReviewWriterSetup_${VERSION}.exe",
+              "sha256": "$(sha256sum ReviewWriterSetup_${VERSION}.exe | awk '{print $1}')",
+              "kind": "installer"
             },
             "macos": {
               "url": "https://github.com/${{ github.repository }}/releases/download/${TAG}/Review_Program_${VERSION}_macOS.zip",
-              "sha256": "$(sha256sum Review_Program_${VERSION}_macOS.zip | awk '{print $1}')"
+              "sha256": "$(sha256sum Review_Program_${VERSION}_macOS.zip | awk '{print $1}')",
+              "kind": "app_bundle"
             },
             "release_notes_url": "https://github.com/${{ github.repository }}/releases/tag/${TAG}"
           }
