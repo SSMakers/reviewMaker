@@ -235,21 +235,39 @@ class AutoUpdater(QObject):
         QApplication.quit()
 
     def _apply_windows_update(self, download_path: Path, current_executable: Path):
+        current_executable = self._normalize_windows_executable_path(current_executable)
+        if current_executable.suffix.lower() != ".exe":
+            raise RuntimeError(f"현재 실행 파일 경로를 확인할 수 없습니다: {current_executable}")
+
         script_path = Path(tempfile.gettempdir()) / "review_writer_update.bat"
         script_path.write_text(
             "\n".join([
                 "@echo off",
-                "timeout /t 2 /nobreak >nul",
-                f'copy /Y "{download_path}" "{current_executable}"',
-                f'start "" "{current_executable}"',
+                "chcp 65001 >nul",
+                f'set "SRC={download_path}"',
+                f'set "DST={current_executable}"',
+                "for /L %%I in (1,1,20) do (",
+                "  timeout /t 1 /nobreak >nul",
+                "  copy /Y \"%SRC%\" \"%DST%\" >nul && goto copied",
+                ")",
+                "exit /b 1",
+                ":copied",
+                'start "" "%DST%"',
                 'del "%~f0"',
             ]),
-            encoding="utf-8",
+            encoding="utf-8-sig",
         )
         subprocess.Popen(
             ["cmd", "/c", "start", "", str(script_path)],
             creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
         )
+
+    def _normalize_windows_executable_path(self, executable_path: Path) -> Path:
+        normalized = executable_path
+        # 일부 환경에서 잘못된 경로가 "...foo.exe\\foo.exe" 형태로 들어오는 사례를 정규화합니다.
+        if normalized.parent.suffix.lower() == ".exe":
+            normalized = normalized.parent
+        return normalized
 
     def _apply_macos_update(self, download_path: Path, current_executable: Path):
         extracted_executable = self._extract_macos_asset(download_path)

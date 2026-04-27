@@ -89,7 +89,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          pyinstaller --onefile --noconsole --name "Review_Program_${env:APP_VERSION}" --add-data ".env;." --add-data "certs;certs" main.py
+          pyinstaller --onefile --noconsole --name "Review_Program" --add-data ".env;." --add-data "certs;certs" main.py
 
       - name: Build macOS app
         if: matrix.os == 'macos-latest'
@@ -104,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-windows
-          path: dist/Review_Program_${{ env.APP_VERSION }}.exe
+          path: dist/Review_Program.exe
 
       - name: Upload macOS release asset
         if: matrix.os == 'macos-latest'
@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          cp release-assets/release-windows/Review_Program_${VERSION}.exe release/
+          cp release-assets/release-windows/Review_Program.exe release/Review_Program_${VERSION}.exe
           cp release-assets/release-macos/Review_Program_${VERSION}_macOS.zip release/
           cd release
           sha256sum * > checksums.txt
