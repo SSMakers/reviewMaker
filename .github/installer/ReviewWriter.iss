@@ -14,7 +14,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\Review Writer
 DefaultGroupName=Review Writer
 DisableDirPage=yes
-OutputDir=dist
+OutputDir=..\..\dist
 OutputBaseFilename=ReviewWriterSetup_{#APP_VERSION}
 Compression=lzma
 SolidCompression=yes
@@ -29,7 +29,7 @@ RestartApplications=yes
 Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 
 [Files]
-Source: "dist\Review_Program\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\dist\Review_Program\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\Review Writer"; Filename: "{app}\{#MyAppExeName}"
