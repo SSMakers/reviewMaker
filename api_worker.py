@@ -13,9 +13,9 @@ from review_preflight import analyze_reviews
 
 BATCH_SIZE = 10
 BATCH_DELAY_SEC = 0.5
-# 게시글 등록 직후 서버 임시 이미지 cleanup 호출 여부
-# 기본값 False 권장: Cafe24가 이미지를 내부로 복사하기 전에 삭제되면 게시글 이미지가 깨질 수 있습니다.
-CLIENT_REVIEW_IMAGE_CLEANUP_ENABLED = False
+# Cafe24 article registration uses temporary server image URLs.
+# After the job finishes, clean them up so cloud storage does not accumulate files.
+CLIENT_REVIEW_IMAGE_CLEANUP_ENABLED = True
 
 
 class ApiWorker(QThread):
