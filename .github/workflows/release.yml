@@ -1,6 +1,10 @@
 name: Release Review Program
 
 on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "version.py"
   workflow_dispatch:
     inputs:
       release_notes:

@@ -1,7 +1,7 @@
 import base64
 import os
 import platform
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote_plus
 
 import requests
 from selenium import webdriver
@@ -13,17 +13,18 @@ from external_api.utils.url_utils import get_access_refresh_token
 from internal_api.internal_api import get_api_keys
 from logger.file_logger import logger
 
-CAFE24_API_VERSION = "2025-12-01"
+DEFAULT_CAFE24_API_VERSION = "2026-03-01"
+CAFE24_API_VERSION = os.getenv("CAFE24_API_VERSION", DEFAULT_CAFE24_API_VERSION).strip() or DEFAULT_CAFE24_API_VERSION
 
 
 class Cafe24Api:
-    def __init__(self, mall_id, client_id, client_secret):
+    def __init__(self, mall_id, client_id, client_secret, redirect_uri=None):
         self.mall_id = mall_id
         self.client_id = client_id
         self.client_secret = client_secret
         self.access_token = None
         self.refresh_token = None
-        self.redirect_uri = f"https://{mall_id}.cafe24.com/order/basket.html"
+        self.redirect_uri = redirect_uri or f"https://{mall_id}.cafe24.com/order/basket.html"
         self.base_url = f"https://{mall_id}.cafe24api.com/api/v2"
         self.api_base_url = f"https://{mall_id}.cafe24api.com/api/v2/admin"
 
@@ -75,9 +76,17 @@ class Cafe24Api:
             final_url = driver.current_url
             logger.info(f"리다이렉트 감지됨: {final_url}")
 
-            # URL에서 code 파라미터 추출
             parsed = urlparse(final_url)
             params = parse_qs(parsed.query)
+            oauth_error = params.get("error", [None])[0]
+            if oauth_error:
+                description = params.get("error_description", [""])[0]
+                decoded_description = unquote_plus(description) if description else ""
+                message = f"Cafe24 OAuth 오류: {oauth_error}"
+                if decoded_description:
+                    message = f"{message} - {decoded_description}"
+                raise RuntimeError(message)
+
             code = params.get('code', [None])[0]
 
             return code
@@ -111,7 +120,7 @@ class Cafe24Api:
 
         self.access_token, self.refresh_token = get_access_refresh_token(response_json)
         if self.access_token is None or self.refresh_token is None:
-            logger.error(f"❌ access, refresh token 업데이트 실패")
+            logger.error("❌ access, refresh token 업데이트 실패: %s", response_json)
             return False
 
         return True

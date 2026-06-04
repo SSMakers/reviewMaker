@@ -28,6 +28,7 @@ class MainPage(QWidget):
         self.refresh_token = None
         self.auth_result = None
         self.mall_id = None
+        self.redirect_url = None
         self.device_id = None
         self.file_path = None
 
@@ -82,6 +83,7 @@ class MainPage(QWidget):
         self.client_id = auth_result.client_id
         self.client_secret = auth_result.secret_key
         self.mall_id = auth_result.mall_id
+        self.redirect_url = getattr(auth_result, "redirect_url", None)
         self.device_id = get_system_uuid()
 
         if isinstance(auth_result, VerifyConfirm):
@@ -227,7 +229,12 @@ class MainPage(QWidget):
             self.append_log("❌ 오류: mall ID is invalid")
             return
 
-        self.cafe24_interface = Cafe24Api(self.mall_id, self.client_id, self.client_secret)
+        self.cafe24_interface = Cafe24Api(
+            self.mall_id,
+            self.client_id,
+            self.client_secret,
+            redirect_uri=self.redirect_url,
+        )
 
         # UI 비활성화 및 안내
         self.btn_refresh.setEnabled(False)
